@@ -1648,7 +1648,7 @@ const App = {
         const el = this.dom.specialistSummary; if(!el) return;
         const subs = [...new Set(this.state.specialists.map(sp => sp.subject || sp.name || '').filter(s => s))], classCount = this.state.config.classCount, sts = {};
         subs.forEach(s => { sts[s] = {}; for(let c=1; c<=classCount; c++) sts[s][c] = 0; });
-        this.state.specialists.forEach(sp => { const sub = sp.subject || sp.name || ''; if(!sub || !sts[sub]) return; this.days.forEach(d => { for(let p=0; p<this.state.config.periods[d]; p++){ const cN = parseInt(sp.data[d] && sp.data[d][p]); if(cN && sts[sub][cN] !== undefined) sts[sub][cN]++; } }); });
+        this.state.specialists.forEach(sp => { const sub = sp.subject || sp.name || ''; if(!sub || !sts[sub]) return; this.days.forEach(d => { for(let p=0; p<this.state.config.periods[d]; p++){ const raw = sp.data[d] && sp.data[d][p]; if(!raw) continue; String(raw).split(/[,\s]+/).map(v => parseInt(v.trim())).filter(n => !isNaN(n) && n > 0).forEach(cN => { if(sts[sub][cN] !== undefined) sts[sub][cN]++; }); } }); });
         if (subs.length === 0) { el.innerHTML = '<div class="sp-sum-inner"><div class="sp-sum-title">배정 현황</div><p class="p-4 text-xs text-gray-400">전담 보드를 추가해주세요.</p></div>' + this.renderReferenceBoardsHTML(); return; }
         const tgts = this.state.history[this.state.currentWeek].specialistTargets || {};
         let h = `<div class="sp-sum-inner"><div class="sp-sum-title">학급별 전담 시수 집계</div><div class="table-responsive"><table class="sp-sum-table"><thead><tr><th>과목명</th><th>목표</th>`;
