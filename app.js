@@ -1981,9 +1981,10 @@ const App = {
             h += `<tr><td class="${p}-pd-td">${row + 1}</td>`;
             this.days.forEach(d => {
                 if (row < this.state.config.periods[d]) {
-                    // 숫자만 표시 (반 글자 제거)
                     const val = (sp.data && sp.data[d] && sp.data[d][row]) ? sp.data[d][row] : '';
-                    h += `<td>${val}</td>`;
+                    const markBg = sp.marks && sp.marks[`${d}_${row}`];
+                    const markStyle = markBg ? ` style="background-color:${markBg};-webkit-print-color-adjust:exact;print-color-adjust:exact;"` : '';
+                    h += `<td${markStyle}>${val}</td>`;
                 } else {
                     h += `<td class="${p}-disabled-td"></td>`;
                 }
