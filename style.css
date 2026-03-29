@@ -200,7 +200,7 @@ tr:hover .btn-detail-badge { background: var(--primary-color); color: white; bor
 
 /* Specialist Split View */
 #sp-split-wrap { display: flex; gap: 20px; align-items: flex-start; }
-#sp-left-panel { flex: 1.5; min-width: 0; overflow: hidden; }
+#sp-left-panel { flex: 1.5; min-width: 0; overflow: visible; }
 #sp-right-panel { flex: 1; min-width: 380px; position: sticky; top: 74px; max-height: calc(100vh - 100px); overflow-y: auto; overflow-x: hidden; background: white; }
 @media (max-width: 800px) { #sp-split-wrap { flex-direction: column; } #sp-right-panel { position: static; max-height: none; width: 100%; flex: none; min-width: 0; } }
 

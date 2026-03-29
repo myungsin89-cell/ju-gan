@@ -1193,7 +1193,8 @@ const App = {
 
                     if (customBg) {
                         s = `style="background-color:${customBg}; color:#000; font-weight:bold;"`;
-                    } else if (val) {
+                    } else if (val && isSpLocked) {
+                        // 전담 가져오기로 채워진 셀만 전담 색상 적용
                         const sp = this.state.specialists.find(sp => (sp.subject === val || sp.name === val));
                         if (sp && sp.bg) s = `style="background-color:${sp.bg}; color:${sp.color || '#000'}; font-weight:bold;"`;
                     }
@@ -1788,6 +1789,7 @@ const App = {
         const wData = this.state.history[this.state.currentWeek];
         const cd = wData.classes[c] || {};
         const bgColors = wData.bgColors?.[c] || {};
+        const spCells = wData.specialistCells?.[String(c)] || {};
         const maxP = Math.max(...Object.values(this.state.config.periods));
         const tdS = 'border:1px solid #aaa;padding:3px 14px;text-align:center;font-size:10pt;';
         const thS = 'border:1px solid #aaa;padding:3px 14px;text-align:center;font-size:10pt;background:#f3f4f6;font-weight:bold;';
@@ -1803,7 +1805,8 @@ const App = {
                 if (p < this.state.config.periods[d]) {
                     const sub = (cd[d] && cd[d][p]) || '';
                     const customBg = bgColors[d]?.[p] ?? null;
-                    const sp = this.state.specialists.find(s => s.subject === sub || s.name === sub);
+                    const isSpCell = !!(spCells[d]?.[p]);
+                    const sp = isSpCell ? this.state.specialists.find(s => s.subject === sub || s.name === sub) : null;
                     const bg = customBg || (sp && sp.bg) || null;
                     const bgAttr = bg ? ` bgcolor="${bg}"` : '';
                     const bgStyle = bg ? `background:${bg};` : '';
@@ -1919,6 +1922,7 @@ const App = {
         const wData = this.state.history[this.state.currentWeek];
         const cd = wData.classes[c] || {};
         const bgColors = wData.bgColors?.[c] || {};
+        const spCells = wData.specialistCells?.[String(c)] || {};
         const maxP = Math.max(...Object.values(this.state.config.periods));
         const p = cls;
         const colgroup = `<colgroup><col class="${p}-col-pd">${this.days.map(() => `<col>`).join('')}</colgroup>`;
@@ -1935,7 +1939,8 @@ const App = {
                 if (row < this.state.config.periods[d]) {
                     const sub = (cd[d] && cd[d][row]) || '';
                     const customBg = bgColors[d]?.[row] ?? null;
-                    const sp = this.state.specialists.find(s => (s.subject === sub || s.name === sub));
+                    const isSpCell = !!(spCells[d]?.[row]);
+                    const sp = isSpCell ? this.state.specialists.find(s => (s.subject === sub || s.name === sub)) : null;
                     const bg = customBg || (sp && sp.bg) || null;
                     const style = bg ? ` style="background-color:${bg};-webkit-print-color-adjust:exact;print-color-adjust:exact;"` : '';
                     h += `<td${style}>${sub}</td>`;
