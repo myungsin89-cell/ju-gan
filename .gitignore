@@ -1,0 +1,15 @@
+# 스크린샷 및 개발용 파일
+*.png
+make-icon.html
+
+# 아이콘은 포함 (배포에 필요)
+!icon.png
+!icon-192.png
+!icon-512.png
+
+# OS 파일
+.DS_Store
+Thumbs.db
+
+# 에디터
+.vscode/

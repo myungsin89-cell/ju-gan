@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주간학습프로그램</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f8fafc">
+    <!-- Google Fonts for Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-content">
+                <h1 class="logo">주간학습프로그램</h1>
+                <nav class="top-nav">
+                    <button id="btn-settings" class="nav-item">설정</button>
+                    <button id="btn-validation" class="nav-item">시수확인</button>
+                    <button id="btn-specialist" class="nav-item">전담배정</button>
+                    <button id="btn-timetable-all" class="nav-item">전체 시간표</button>
+                    <button id="btn-timetable" class="nav-item active">반별 시간표</button>
+                </nav>
+                <div class="header-right">
+                    <button id="btn-server-load" class="btn-server-action" style="display:none;" onclick="App.loadFromServer()" title="다른 선생님이 저장한 내용 가져오기">↺</button>
+                    <button id="btn-server-save" class="btn-server-action btn-server-save-style" style="display:none;" onclick="App.saveToServer()" title="전체 데이터 저장 (관리자)">전체 저장</button>
+                    <button id="btn-admin-mode" class="btn-admin-mode hide" onclick="App.toggleAdminMode()" title="관리자 모드">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        관리자 모드
+                    </button>
+                    <div id="user-badge" class="user-card hide">
+                        <span id="user-info-text" class="user-card-name">1반 홍길동 선생님</span>
+                        <button id="btn-logout" class="btn-logout-mini" title="로그아웃">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                <polyline points="16 17 21 12 16 7"/>
+                                <line x1="21" y1="12" x2="9" y2="12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="container">
+            
+            <!-- 1. Settings View -->
+            <section id="settings-view" class="hide">
+                <div class="settings-page">
+                    <div class="settings-cols">
+
+                        <!-- Left: 학교 기본 정보 -->
+                        <div class="settings-col-card">
+                            <div>
+                                <h3 class="settings-section-title">학교 기본 정보</h3>
+                                <p class="settings-section-desc">학년, 학급 수, 요일별 교시 수를 설정합니다.</p>
+                            </div>
+
+                            <div class="settings-field-row">
+                                <div class="settings-field">
+                                    <label class="settings-label">학년</label>
+                                    <div class="settings-input-wrap">
+                                        <input type="number" id="input-grade" class="settings-num-input" value="" min="1" max="6" placeholder="3">
+                                        <span class="settings-unit">학년</span>
+                                    </div>
+                                </div>
+                                <div class="settings-field">
+                                    <label class="settings-label">운영 학급 수</label>
+                                    <div class="settings-input-wrap">
+                                        <input type="number" id="input-class-count" class="settings-num-input" value="4" min="1" max="14">
+                                        <span class="settings-unit">반</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-field">
+                                <label class="settings-label">요일별 수업 교시 수</label>
+                                <div class="day-steppers">
+                                    <div class="day-stepper">
+                                        <span class="day-stepper-label">월</span>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('월',-1)">−</button>
+                                        <input type="number" id="pd-mon" class="stepper-input" value="6" min="1" max="8" readonly>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('월',1)">+</button>
+                                    </div>
+                                    <div class="day-stepper">
+                                        <span class="day-stepper-label">화</span>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('화',-1)">−</button>
+                                        <input type="number" id="pd-tue" class="stepper-input" value="6" min="1" max="8" readonly>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('화',1)">+</button>
+                                    </div>
+                                    <div class="day-stepper">
+                                        <span class="day-stepper-label">수</span>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('수',-1)">−</button>
+                                        <input type="number" id="pd-wed" class="stepper-input" value="5" min="1" max="8" readonly>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('수',1)">+</button>
+                                    </div>
+                                    <div class="day-stepper">
+                                        <span class="day-stepper-label">목</span>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('목',-1)">−</button>
+                                        <input type="number" id="pd-thu" class="stepper-input" value="6" min="1" max="8" readonly>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('목',1)">+</button>
+                                    </div>
+                                    <div class="day-stepper">
+                                        <span class="day-stepper-label">금</span>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('금',-1)">−</button>
+                                        <input type="number" id="pd-fri" class="stepper-input" value="6" min="1" max="8" readonly>
+                                        <button class="stepper-btn" onclick="App.stepPeriod('금',1)">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: 운영 과목 -->
+                        <div class="settings-col-card">
+                            <div class="settings-section-head">
+                                <div>
+                                    <h3 class="settings-section-title">운영 과목</h3>
+                                    <p class="settings-section-desc">과목명과 랜덤 배정 시 선호 시간대를 설정합니다.</p>
+                                </div>
+                                <button id="btn-add-subject" class="btn-add-item">+ 추가</button>
+                            </div>
+                            <div id="subject-config-list" class="subject-rows">
+                                <!-- injected by JS -->
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- 관리자 비번 변경 -->
+                    <div class="settings-col-card" style="margin-top:16px;">
+                        <div>
+                            <h3 class="settings-section-title">관리자 비밀번호 변경</h3>
+                            <p class="settings-section-desc">관리자 모드 진입 시 사용할 4자리 숫자 비밀번호를 설정합니다.</p>
+                        </div>
+                        <div class="settings-field-row" style="margin-top:12px; align-items:flex-end; gap:12px;">
+                            <div class="settings-field">
+                                <label class="settings-label">현재 비밀번호</label>
+                                <input type="password" id="input-admin-pin-current" class="settings-num-input" inputmode="numeric" maxlength="4" placeholder="••••" style="width:80px; letter-spacing:4px; text-align:center;">
+                            </div>
+                            <div class="settings-field">
+                                <label class="settings-label">새 비밀번호</label>
+                                <input type="password" id="input-admin-pin-new" class="settings-num-input" inputmode="numeric" maxlength="4" placeholder="••••" style="width:80px; letter-spacing:4px; text-align:center;">
+                            </div>
+                            <div class="settings-field">
+                                <label class="settings-label">새 비밀번호 확인</label>
+                                <input type="password" id="input-admin-pin-confirm" class="settings-num-input" inputmode="numeric" maxlength="4" placeholder="••••" style="width:80px; letter-spacing:4px; text-align:center;">
+                            </div>
+                            <button id="btn-change-admin-pin" class="btn-primary-small" style="margin-bottom:2px;" onclick="App.changeAdminPin()">변경</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-save-bar">
+                        <button id="btn-save-settings" class="btn-primary settings-save-btn">설정 저장</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Validation View (Total Hours Check) -->
+            <section id="validation-view" class="hide">
+                <!-- Annual Summary Card -->
+                <div class="card">
+                    <div class="section-header">
+                        <h2>전체 시수 확인 대시보드</h2>
+                        <div class="header-actions">
+                            <span class="status-badge" id="val-update-status">실시간 업데이트 중</span>
+                        </div>
+                    </div>
+                    <p class="subtitle mb-4">연간 기준 시수 대비 현재까지의 누적 시수와 편차를 확인합니다.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="excel-table summary-table" id="annual-summary-table">
+                            <!-- Injected by JS: Columns: 과목, 기준시수, 누적시수, 편차 -->
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Weekly Per-Class Deviation Card -->
+                <div class="card mt-4">
+                    <div class="section-header">
+                        <h3>반별 주간 시수 편차 확인</h3>
+                        <p class="subtitle">해당 주차의 목표 시수 대비 각 반별 입력 현황(편차)을 확인합니다.</p>
+                    </div>
+                    <div class="action-bar mt-3" style="display:flex; justify-content:flex-end;">
+                        <span class="text-xs text-gray-500">※ 0은 일치, +는 초과, -는 부족을 의미합니다.</span>
+                    </div>
+                    <div id="class-deviation-container" class="mt-3">
+                        <!-- Injected by JS: Table showing Class vs Subject deviations -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Specialist View -->
+            <section id="specialist-view" class="hide">
+                <!-- Split View Wrapper -->
+                <div id="sp-split-wrap">
+                    <!-- LEFT: Boards -->
+                    <div id="sp-left-panel" class="card" style="min-width:0;">
+                        <div class="section-header">
+                            <h2>전담 보드</h2>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <div id="marking-toolbar" style="display:flex; gap:8px; align-items:center; padding:4px 8px; border-radius:8px; background:#f9fafb; border:1px solid #e5e7eb;">
+                                    <button id="btn-toggle-marking" class="btn-secondary btn-sm">✍️ 마킹 모드 : OFF</button>
+                                    <div id="marking-color-picker" style="display:none; gap:6px; margin-left:4px;">
+                                        <div class="mark-color-btn active" style="background:#fef08a;" data-color="#fef08a" title="연노랑"></div>
+                                        <div class="mark-color-btn" style="background:#dcfce7;" data-color="#dcfce7" title="연초록"></div>
+                                        <div class="mark-color-btn" style="background:#dbeafe;" data-color="#dbeafe" title="연파랑"></div>
+                                        <div class="mark-color-btn" style="background:#e0e7ff;" data-color="#e0e7ff" title="연보라"></div>
+                                        <div class="mark-color-btn" style="background:#ffedd5;" data-color="#ffedd5" title="연주황"></div>
+                                    </div>
+                                </div>
+                                <button id="btn-toggle-sp-preview" class="btn-secondary btn-sm">반별 미리보기</button>
+                                <button id="btn-add-specialist" class="btn-primary-small">+ 전담 추가</button>
+                                <button id="btn-save-specialist" class="btn-primary-small" onclick="App.saveSpecialistToServer()">저장</button>
+                            </div>
+                        </div>
+                        <p class="subtitle mt-4">과목명과 설명을 입력하고, 표 안에 해당 교시를 담당할 <b>반 번호</b>를 입력하세요. 같은 교시에 반 번호가 중복되면 빨간색으로 경고합니다.</p>
+                        <div class="specialist-layout mt-4">
+                            <div id="specialist-boards-container" class="sp-boards-wrap"></div>
+                            <div id="specialist-summary-container" class="sp-summary-panel"></div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Real-time class preview (shown when split mode active) -->
+                    <div id="sp-right-panel" class="card" style="display:none; min-width:0;">
+                        <div class="section-header" style="padding-bottom:12px;">
+                            <h3 style="font-size:1rem;">반별 배치 미리보기</h3>
+                            <span class="subtitle" style="font-size:0.8rem;">입력과 동시에 실시간 반영</span>
+                        </div>
+                        <div id="sp-preview-content" style="overflow-y:auto;">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Timetable View (Main) -->
+            <section id="timetable-view">
+                <!-- Top Toolbar -->
+                <div class="week-toolbar card">
+                    <div class="week-selector">
+                        <button id="btn-prev-week" class="btn-icon">&lt;</button>
+                        <h2 id="current-week-label" class="week-title">1주차 시간표</h2>
+                        <button id="btn-next-week" class="btn-icon">&gt;</button>
+                        <button id="btn-create-week" class="btn-primary-small ml-4">+ 새 주차 생성</button>
+                        <button id="btn-clear-all" class="btn-secondary btn-sm" style="color:#ef4444;">전체 시간표 삭제</button>
+                    </div>
+                    <div class="global-actions">
+                        <button id="btn-import-all" class="btn-secondary btn-sm">전담 전체 가져오기</button>
+                        <button id="btn-random-all" class="btn-primary-small">전체 랜덤 배정</button>
+                        <button id="btn-print-guide" class="btn-primary-small ml-4" style="background-color: #3b82f6;">📄 주간학습안내</button>
+                    </div>
+                </div>
+
+                <!-- Global Target Hours for the Week -->
+                <div id="week-target-container" class="mt-4">
+                    <!-- Injected by JS -->
+                </div>
+
+                <div class="main-timetable-layout">
+                    <!-- Left Sidebar: Subject Palette -->
+                    <aside class="sidebar-palette">
+                        <div class="card palette-sidebar-card">
+                            <div class="section-header" style="border:none; padding:0; margin-bottom:12px;">
+                                <h3 style="font-size:0.9rem; font-weight:700; color:var(--text-sub);">과목 선택</h3>
+                                <div id="selected-sub-display" class="text-xs font-bold" style="color:var(--primary-dark); margin-top:4px;"></div>
+                            </div>
+                            <div id="subject-palette" class="vertical-palette-list">
+                                <!-- Injected by JS -->
+                            </div>
+
+                            <div class="sidebar-divider"></div>
+
+                            <!-- Color Highlighter Section -->
+                            <div class="section-header" style="border:none; padding:0; margin-bottom:12px;">
+                                <h3 style="font-size:0.9rem; font-weight:700; color:var(--text-sub);">형광펜 색상</h3>
+                            </div>
+                            <div id="sidebar-color-palette" class="sidebar-color-grid">
+                                <!-- Colors: Pastel Red, Orange, Yellow, Green, Cyan, Blue, Purple, Pink, Grey, White -->
+                                <div class="color-chip" style="background-color:#fee2e2;" onclick="App.setSidebarColor('#fee2e2', this)"></div>
+                                <div class="color-chip" style="background-color:#ffedd5;" onclick="App.setSidebarColor('#ffedd5', this)"></div>
+                                <div class="color-chip" style="background-color:#fef9c3;" onclick="App.setSidebarColor('#fef9c3', this)"></div>
+                                <div class="color-chip" style="background-color:#f0fdf4;" onclick="App.setSidebarColor('#f0fdf4', this)"></div>
+                                <div class="color-chip" style="background-color:#ecfeff;" onclick="App.setSidebarColor('#ecfeff', this)"></div>
+                                <div class="color-chip" style="background-color:#eff6ff;" onclick="App.setSidebarColor('#eff6ff', this)"></div>
+                                <div class="color-chip" style="background-color:#f5f3ff;" onclick="App.setSidebarColor('#f5f3ff', this)"></div>
+                                <div class="color-chip" style="background-color:#fdf2f8;" onclick="App.setSidebarColor('#fdf2f8', this)"></div>
+                                <div class="color-chip" style="background-color:#f3f4f6;" onclick="App.setSidebarColor('#f3f4f6', this)"></div>
+                                <div class="color-chip" style="background-color:#ffffff; border:1px solid #e5e7eb;" onclick="App.setSidebarColor('#ffffff', this)"></div>
+                                <button class="btn-clear-color" onclick="App.setSidebarColor(null, this)" title="색상 선택 해제">✕</button>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <!-- Right Main Content: All Classes List -->
+                    <div id="all-classes-container" class="timetable-main-content">
+                        <!-- Injected by JS: Repeats the integrated layout per class -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js');
+            }
+        </script>
+
+        <!-- Modal System -->
+        <div id="modal-container" class="modal-overlay hide">
+            <div class="modal">
+                <header class="modal-header">
+                    <h3 id="modal-title">알림</h3>
+                    <button id="btn-modal-close" class="btn-close">&times;</button>
+                </header>
+                <div id="modal-content" class="modal-body">
+                    <!-- Dynamic content -->
+                </div>
+                <footer class="modal-footer">
+                    <button id="btn-modal-cancel" class="btn-secondary btn-sm mr-2 hide">취소</button>
+                    <button id="btn-modal-confirm" class="btn-primary">확인</button>
+                </footer>
+            </div>
+        </div>
+
+        <!-- 새 학년 생성 모달 -->
+        <div id="create-room-overlay" class="cr-overlay hide">
+            <div class="cr-modal">
+                <div class="cr-header">
+                    <div class="cr-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="cr-title">새 학년 생성</h2>
+                        <p class="cr-subtitle">학교 이름과 학년을 입력하면 방 코드가 만들어집니다</p>
+                    </div>
+                    <button id="btn-cr-close" class="cr-close-btn">&times;</button>
+                </div>
+                <div class="cr-body">
+                    <div class="cr-field-row">
+                        <div class="cr-field">
+                            <label class="cr-label">학교 이름</label>
+                            <input id="cr-school" type="text" class="cr-input" placeholder="예) 이음초" maxlength="20" autocomplete="off">
+                        </div>
+                        <div class="cr-field cr-field-grade">
+                            <label class="cr-label">학년</label>
+                            <select id="cr-grade" class="cr-input cr-select">
+                                <option value="">선택</option>
+                                <option value="1학년">1학년</option>
+                                <option value="2학년">2학년</option>
+                                <option value="3학년">3학년</option>
+                                <option value="4학년">4학년</option>
+                                <option value="5학년">5학년</option>
+                                <option value="6학년">6학년</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="cr-preview" id="cr-preview">
+                        <span class="cr-preview-label">생성될 방 코드</span>
+                        <span class="cr-preview-code" id="cr-preview-code">—</span>
+                    </div>
+                    <div id="cr-error" class="cr-error hide"></div>
+                </div>
+                <div class="cr-footer">
+                    <button id="btn-cr-cancel" class="cr-btn-cancel">취소</button>
+                    <button id="btn-cr-confirm" class="cr-btn-confirm" disabled>생성하기</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 슈퍼관리자 방 관리 모달 -->
+        <div id="room-manage-overlay" class="cr-overlay hide">
+            <div class="cr-modal rm-modal">
+                <div class="cr-header">
+                    <div class="cr-icon" style="background: linear-gradient(135deg,#6366f1,#4f46e5);">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="cr-title">방 관리</h2>
+                        <p class="cr-subtitle">생성된 학년 방 목록을 관리합니다</p>
+                    </div>
+                    <button id="btn-rm-close" class="cr-close-btn">&times;</button>
+                </div>
+                <div class="rm-body">
+                    <ul id="rm-room-list" class="rm-room-list">
+                        <li class="rm-loading">불러오는 중...</li>
+                    </ul>
+                </div>
+                <div class="cr-footer" style="justify-content:flex-end;">
+                    <button id="btn-rm-done" class="cr-btn-cancel" style="flex:0 0 auto; padding:13px 28px;">닫기</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Overlay -->
+        <div id="login-overlay" class="login-overlay hide">
+            <button id="btn-superadmin" class="btn-superadmin" title="">⚙</button>
+            <div class="login-card card">
+                <div class="login-header">
+                    <h2 class="login-title">주간학습프로그램에<br>오신 것을 환영합니다</h2>
+                    <p class="login-subtitle">선생님들의 원활한 수업 계획을 위한 공간입니다.</p>
+                    <p class="login-desc">반과 이름을 입력하고 시작하여<br>시간표 관리 기능을 이용해보세요.</p>
+                </div>
+                <div class="login-body">
+                    <div class="login-room-row">
+                        <div class="login-room-select-wrap">
+                            <select id="login-room-code" class="login-input login-room-select">
+                                <option value="">학년 선택 중...</option>
+                            </select>
+                            <button id="btn-create-room" class="btn-create-room" type="button">+ 새 학년 생성</button>
+                        </div>
+                    </div>
+                    <div class="login-row">
+                        <input type="number" id="login-class-num" class="login-input text-center" min="1" max="20" placeholder="반">
+                        <input type="text" id="login-name" class="login-input" placeholder="이름 (예: 홍길동)" maxlength="10">
+                    </div>
+                    <button id="btn-login" class="btn-login-submit">시작하기</button>
+                </div>
+                <div class="login-footer">
+                    <p class="text-xs text-gray-500">입력하신 정보는 안전하게 저장됩니다.</p>
+                    <button id="btn-install" class="btn-install-login hide">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        앱으로 설치하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 🖨️ Print Area -->
+    <div id="print-area" class="print-only"></div>
+
+    <!-- 📄 주간학습안내 미리보기 오버레이 -->
+    <div id="print-preview-overlay" class="hide">
+        <div class="ppo-header">
+            <div class="ppo-title">📄 주간학습안내 미리보기</div>
+            <div class="ppo-header-actions">
+                <button id="btn-ppo-print" class="btn-primary-small" style="background:#475569;">🖨️ 인쇄</button>
+                <button id="btn-ppo-download" class="btn-primary-small" style="background:#3b82f6;">⬇ PDF 다운로드</button>
+                <button id="btn-ppo-word" class="btn-primary-small" style="background:#2563eb;">📝 Word 다운로드</button>
+                <button id="btn-ppo-close" class="ppo-close-btn">✕</button>
+            </div>
+        </div>
+        <div class="ppo-body">
+            <!-- JS가 .ppo-page 요소를 직접 생성 -->
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-db.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
