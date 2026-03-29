@@ -1943,7 +1943,8 @@ const App = {
                     const sp = isSpCell ? this.state.specialists.find(s => (s.subject === sub || s.name === sub)) : null;
                     const bg = customBg || (sp && sp.bg) || null;
                     const style = bg ? ` style="background-color:${bg};-webkit-print-color-adjust:exact;print-color-adjust:exact;"` : '';
-                    h += `<td${style}>${sub}</td>`;
+                    const displaySub = sub.replace('(', '<br>(');
+                    h += `<td${style}>${displaySub}</td>`;
                 } else {
                     h += `<td class="${p}-disabled-td"></td>`;
                 }
