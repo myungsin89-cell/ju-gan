@@ -476,8 +476,8 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 .ppo-disabled-td { background: #f1f5f9; }
 
 /* 전담 시간표 헤더 — 가운데 정렬, 구분선 단일 얇은 선 */
-.ppo-sp-name-th {
-    font-size: 11px; font-weight: 800; padding: 7px 10px;
+.ppo-table th.ppo-sp-name-th {
+    font-size: 10.5px; font-weight: 800; padding: 7px 10px;
     text-align: center; letter-spacing: 0.3px;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
