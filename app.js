@@ -1791,12 +1791,12 @@ const App = {
         const bgColors = wData.bgColors?.[c] || {};
         const spCells = wData.specialistCells?.[String(c)] || {};
         const maxP = Math.max(...Object.values(this.state.config.periods));
-        const tdS = 'border:1px solid #aaa;padding:3px 14px;text-align:center;font-size:10pt;background:#ffffff;';
-        const thS = 'border:1px solid #aaa;padding:3px 14px;text-align:center;font-size:10pt;background:#f3f4f6;font-weight:bold;color:#000000;';
-        const hdS = 'border:1px solid #aaa;padding:4px 8px;text-align:center;font-size:11pt;font-weight:bold;background:#ffffff;color:#000000;';
-        const pdS = 'border:1px solid #aaa;padding:3px 8px;text-align:center;font-size:9pt;color:#666;background:#f3f4f6;';
+        const tdS = 'border:1px solid #000000;padding:3px 14px;text-align:center;font-size:10pt;background:#ffffff;';
+        const thS = 'border:1px solid #000000;padding:3px 14px;text-align:center;font-size:10pt;background:#f3f4f6;font-weight:bold;color:#000000;';
+        const hdS = 'border:1px solid #000000;padding:4px 8px;text-align:center;font-size:11pt;font-weight:bold;background:#ffffff;color:#000000;';
+        const pdS = 'border:1px solid #000000;padding:3px 8px;text-align:center;font-size:9pt;color:#666;background:#f3f4f6;';
 
-        let t = `<table align="center" style="border-collapse:collapse;width:auto;min-width:300px;">`;
+        let t = `<table align="center" border="1" style="border-collapse:collapse;width:auto;min-width:300px;">`;
         t += `<tr><th colspan="${this.days.length + 1}" style="${hdS}">${c}반 시간표</th></tr>`;
         t += `<tr><th style="${thS}">교시</th>${this.days.map(d => `<th style="${thS}">${d}</th>`).join('')}</tr>`;
         for (let p = 0; p < maxP; p++) {
