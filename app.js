@@ -1791,10 +1791,10 @@ const App = {
         const bgColors = wData.bgColors?.[c] || {};
         const spCells = wData.specialistCells?.[String(c)] || {};
         const maxP = Math.max(...Object.values(this.state.config.periods));
-        const tdS = 'border:1px solid #aaa;padding:3px 14px;text-align:center;font-size:10pt;';
-        const thS = 'border:1px solid #aaa;padding:3px 14px;text-align:center;font-size:10pt;background:#f3f4f6;font-weight:bold;';
-        const hdS = 'border:1px solid #aaa;padding:4px 8px;text-align:center;font-size:11pt;font-weight:bold;background:#1e293b;color:#fff;';
-        const pdS = 'border:1px solid #aaa;padding:3px 8px;text-align:center;font-size:9pt;color:#666;background:#f8fafc;';
+        const tdS = 'border:1px solid #aaa;padding:3px 14px;text-align:center;font-size:10pt;background:#ffffff;';
+        const thS = 'border:1px solid #aaa;padding:3px 14px;text-align:center;font-size:10pt;background:#f3f4f6;font-weight:bold;color:#000000;';
+        const hdS = 'border:1px solid #aaa;padding:4px 8px;text-align:center;font-size:11pt;font-weight:bold;background:#ffffff;color:#000000;';
+        const pdS = 'border:1px solid #aaa;padding:3px 8px;text-align:center;font-size:9pt;color:#666;background:#f3f4f6;';
 
         let t = `<table align="center" style="border-collapse:collapse;width:auto;min-width:300px;">`;
         t += `<tr><th colspan="${this.days.length + 1}" style="${hdS}">${c}반 시간표</th></tr>`;
@@ -1849,11 +1849,11 @@ const App = {
         document.getElementById('input-admin-pin-confirm').value = '';
         this.showToast('✅ 관리자 비밀번호가 변경되었습니다.');
     },
-    saveSettings() {
+    async saveSettings() {
         const cnt = parseInt(this.dom.classCountInput.value); if(cnt < 1) return;
         this.state.config = { ...this.state.config, grade: this.dom.gradeInput.value, classCount: cnt };
         this.days.forEach(d => this.state.config.periods[d] = parseInt(this.dom.periodInputs[d].value));
-        
+
         // Collect subjects from rows (in DOM order = user-sorted order)
         const subs = [];
         this.dom.subjectList.querySelectorAll('.subject-row').forEach(item => {
@@ -1865,8 +1865,16 @@ const App = {
                 subs.push({ name, blockSize: existing ? existing.blockSize : 1, preferredSlot: slot });
             }
         });
-        this.state.config.subjects = subs; 
-        this.saveData(); 
+        this.state.config.subjects = subs;
+        this.saveData();
+        if (this.state.isAdmin && this.state.roomCode) {
+            try {
+                await FirebaseDB.saveAdmin(this.state.roomCode, this.state);
+            } catch(e) {
+                this.showToast('⚠️ 서버 저장 실패: ' + e.message);
+                return;
+            }
+        }
         this.showAlert('설정 저장 완료', '변경된 설정이 저장되었습니다.').then(() => this.switchMenu('timetable'));
     },
     

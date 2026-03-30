@@ -92,6 +92,7 @@ const FirebaseDB = {
 
         return {
             config: roomData.config || null,
+            classSettings: roomData.classSettings || {},
             specialists: roomData.specialists || [],
             referenceBoards: roomData.referenceBoards || [],
             maxWeek: roomData.maxWeek || 1,
@@ -113,6 +114,7 @@ const FirebaseDB = {
         await rRef.set({
             ...this._clean({
                 config: state.config,
+                classSettings: state.classSettings || {},
                 specialists: state.specialists || [],
                 referenceBoards: state.referenceBoards || [],
                 maxWeek: state.maxWeek,
@@ -164,6 +166,13 @@ const FirebaseDB = {
                     }))
             );
         }
+
+        // 반별 선호시간대 설정 저장 (해당 반만 업데이트)
+        const classSettingData = this._clean((state.classSettings || {})[classNum] || {});
+        saves.push(
+            rRef.set({ classSettings: { [classNum]: classSettingData } }, { merge: true })
+        );
+
         await Promise.all(saves);
     }
 };
