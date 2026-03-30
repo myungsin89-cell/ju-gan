@@ -1421,7 +1421,7 @@ const App = {
                             <div id="sp-color-dropdown-${idx}" class="sp-color-dropdown card">
                                 <div class="sp-dropdown-title">보드 배경색 선택</div>
                                 <div class="sp-presets-grid">
-                                    ${['#fee2e2','#ffedd5','#fef9c3','#f0fdf4','#ecfeff','#eff6ff','#f5f3ff','#fdf2f8','#ffffff'].map(c => 
+                                    ${['#fecaca','#fed7aa','#fef08a','#dcfce7','#cffafe','#dbeafe','#ede9fe','#fce7f3','#e5e7eb','#ffffff'].map(c =>
                                         `<div class="sp-preset-item" style="background-color:${c}; border:1px solid #e5e7eb;" onclick="App.setSpColor(${idx}, '${c}')"></div>`
                                     ).join('')}
                                 </div>
@@ -1675,7 +1675,7 @@ const App = {
                         <div id="sp-ref-color-dropdown-${idx}" class="sp-color-dropdown card" style="right:0;">
                             <div class="sp-dropdown-title">색상 선택</div>
                             <div class="sp-presets-grid">
-                                ${['#fee2e2','#ffedd5','#fef9c3','#f0fdf4','#ecfeff','#eff6ff','#f5f3ff','#fdf2f8','#ffffff'].map(c => 
+                                ${['#fecaca','#fed7aa','#fef08a','#dcfce7','#cffafe','#dbeafe','#ede9fe','#fce7f3','#e5e7eb','#ffffff'].map(c =>
                                     `<div class="sp-preset-item" style="background-color:${c}; border:1px solid #e5e7eb;" onclick="App.setRefColor(${idx}, '${c}')"></div>`
                                 ).join('')}
                             </div>
