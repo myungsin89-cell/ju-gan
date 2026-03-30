@@ -2088,23 +2088,23 @@ const App = {
         const css = `
             @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
             * { box-sizing: border-box; }
-            body { margin:0; padding:10mm; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; background:#fff; font-size:10.5px; }
-            @page { size:A4 portrait; margin:10mm; }
-            .pt-doc-title { text-align:center; font-size:1.1rem; font-weight:800; padding:9px 16px; margin-bottom:12px; border-bottom:2px solid #1e293b; letter-spacing:1.5px; color:#1e293b; }
-            .pt-grid { display:grid; gap:8px; align-items:stretch; }
+            body { margin:0; padding:0; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; background:#fff; font-size:10.5px; }
+            @page { size:A4 portrait; margin:14mm 12mm; }
+            .pt-doc-title { text-align:center; font-size:1.15rem; font-weight:800; padding:9px 16px; margin-bottom:14px; border-bottom:2px solid #1e293b; letter-spacing:1.5px; color:#1e293b; }
+            .pt-grid { display:grid; gap:10px; align-items:stretch; }
             .pt-grid-2 { grid-template-columns:repeat(2,1fr); }
             .pt-grid-3 { grid-template-columns:repeat(3,1fr); }
             .pt-grid-4 { grid-template-columns:repeat(4,1fr); }
             .pt-table { width:100%; height:100%; border-collapse:collapse; table-layout:fixed; font-size:10.5px; text-align:center; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; font-weight:500; letter-spacing:-0.2px; border:1px solid #e2e8f0; page-break-inside:avoid; }
             .pt-col-pd { width:36px; }
-            .pt-table th, .pt-table td { border:1px solid #e2e8f0; padding:4px 2px; overflow:hidden; white-space:nowrap; font-size:9px; letter-spacing:-0.5px; }
-            .pt-class-th { background:#1e293b !important; color:#fff; font-size:12px; font-weight:900; padding:5px 4px; letter-spacing:0.5px; white-space:nowrap; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-table th, .pt-table td { border:1px solid #e2e8f0; padding:6px 1px; overflow:hidden; white-space:nowrap; font-size:9px; letter-spacing:-0.5px; }
+            .pt-class-th { background:#1e293b !important; color:#fff; font-size:12px; font-weight:900; padding:8px 4px; letter-spacing:0.5px; white-space:nowrap; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-day-th { background:#f1f5f9 !important; font-weight:700; font-size:10px; color:#475569; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-pd-td { background:#f8fafc; font-weight:700; color:#94a3b8; font-size:9.5px; }
             .pt-disabled-td { background:#f1f5f9; }
-            .pt-sp-name-th { font-size:11px; font-weight:800; padding:7px 10px; text-align:center; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-sp-name-th { font-size:10.5px; font-weight:800; padding:7px 10px; text-align:center; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-sp-desc { font-family:inherit; font-weight:600; font-size:10.5px; opacity:0.9; border-left:1.5px solid currentColor; margin-left:10px; padding-left:10px; }
-            .pt-page-break { page-break-before:always; padding-top:10mm; }
+            .pt-page-break { page-break-before:always; }
         `;
 
         const win = window.open('', '_blank', 'width=900,height=700');
