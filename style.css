@@ -145,7 +145,7 @@ input[type="number"], input[type="text"] { font-family: inherit; }
 .target-cell-input.target-locked { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
 .target-cell-input.target-locked:focus { background: #f8fafc; }
 .total-col { background: #f9fafb !important; color: var(--text-sub) !important; font-weight: 700 !important; border: 1px solid var(--border-color); white-space: nowrap; padding: 0 10px; }
-.total-val { font-size: 1.05rem; font-weight: 800; color: var(--text-main); background: white !important; padding: 10px 4px; border: none; display: block; width: 100%; text-align: center; min-width: 50px; }
+.total-val { font-size: 1rem; font-weight: 800; color: var(--text-main); background: #f9fafb; padding: 10px 4px; text-align: center; min-width: 50px; }
 
 /* Integrated Layout for Timetable */
 .week-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-radius: 16px; }

@@ -1093,7 +1093,7 @@ const App = {
         th += `<th>합계</th></tr></thead><tbody><tr><td class="target-row-label">이번 주 목표</td>`;
         const targetReadonly = (mode === 'single');
         let tv = 0; subs.forEach(s => { th += `<td><input type="text" inputmode="numeric" class="target-input-global target-cell-input${targetReadonly ? ' target-locked' : ''}" data-sub="${s.name}" value="${tgts[s.name]||0}"${targetReadonly ? ' readonly title="관리자만 목표 차시를 변경할 수 있습니다."' : ''}></td>`; tv += tgts[s.name] || 0; });
-        th += `<td class="total-val" style="font-weight:800; font-size:1.05rem;">${tv}</td></tr></tbody></table></div>`;
+        th += `<td class="total-val">${tv}</td></tr></tbody></table></div>`;
         this.dom.weekTargetContainer.innerHTML = th;
 
         // 전체 시간표(all): 모든 반, 반별 시간표(single): 자기 반만
