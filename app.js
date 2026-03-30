@@ -214,7 +214,7 @@ const App = {
                 this.clearClass(cNum);
             } else if (e.target.classList.contains('cell-input')) {
                 // 전담 잠금 셀에 과목/색상 클릭 시도 → 확인 후 적용
-                if (e.target.dataset.spLocked === '1' && (this.state.selectedSub || this.state.selectedSidebarColor !== undefined)) {
+                if (e.target.dataset.spLocked === '1' && (this.state.selectedSub || (this.state.selectedSidebarColor !== null && this.state.selectedSidebarColor !== undefined))) {
                     this.showConfirm('전담 시간 수정', '이 교시는 전담 시간입니다.<br>수정하시겠습니까?').then(r => {
                         if (r) { this._unlockSpCell(e.target); e.target.click(); }
                     });
@@ -227,10 +227,11 @@ const App = {
                     this.state.history[this.state.currentWeek].classes[cNum][d][idx] = this.state.selectedSub;
                     changed = true;
                 }
-                if (this.state.selectedSidebarColor !== undefined) {
+                if (this.state.selectedSidebarColor !== null && this.state.selectedSidebarColor !== undefined) {
                     const color = this.state.selectedSidebarColor;
                     if (!this.state.history[this.state.currentWeek].bgColors) this.state.history[this.state.currentWeek].bgColors = {};
-                    if (!this.state.history[this.state.currentWeek].bgColors[cNum]) this.state.history[this.state.currentWeek].bgColors[cNum] = { "월":[], "화":[], "수":[], "목":[], "금":[] };
+                    if (!this.state.history[this.state.currentWeek].bgColors[cNum]) this.state.history[this.state.currentWeek].bgColors[cNum] = {};
+                    if (!this.state.history[this.state.currentWeek].bgColors[cNum][d]) this.state.history[this.state.currentWeek].bgColors[cNum][d] = [];
                     this.state.history[this.state.currentWeek].bgColors[cNum][d][idx] = color;
                     e.target.style.backgroundColor = color || '';
                     e.target.style.color = (color && color !== '#ffffff') ? '#000' : '';
