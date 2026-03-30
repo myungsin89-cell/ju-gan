@@ -862,6 +862,8 @@ const App = {
             }
             // maxWeek에 맞춰 주차 데이터 초기화 보정
             for (let w = 1; w <= this.state.maxWeek; w++) this.initWeekData(w);
+            // 항상 최신 주차로 이동
+            this.state.currentWeek = this.state.maxWeek;
             this.saveData();
             this.renderTimetableLayout();
             this.calculateAndRenderValidationView?.();
