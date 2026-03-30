@@ -437,7 +437,7 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 
 /* 반별 시간표 그리드 — stretch로 모든 표 높이 동일 */
-.ppo-grid { display: grid; gap: 8px; align-items: stretch; }
+.ppo-grid { display: grid; gap: 10px; align-items: stretch; }
 .ppo-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .ppo-grid-3 { grid-template-columns: repeat(3, 1fr); }
 .ppo-grid-4 { grid-template-columns: repeat(4, 1fr); }
@@ -453,7 +453,7 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 .ppo-table col.ppo-col-pd { width: 36px; }
 .ppo-table th, .ppo-table td {
-    border: 1px solid #e2e8f0; padding: 3px 1px;
+    border: 1px solid #e2e8f0; padding: 6px 1px;
     overflow: hidden; white-space: nowrap;
     font-size: 9px; letter-spacing: -0.5px;
 }
@@ -461,7 +461,7 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 /* 반별 시간표 헤더 — 좌상단 셀(반 이름) */
 .ppo-class-th {
     background: #1e293b; color: #fff; font-size: 12px;
-    font-weight: 900; padding: 5px 4px; letter-spacing: 0.5px;
+    font-weight: 900; padding: 8px 4px; letter-spacing: 0.5px;
     white-space: nowrap;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
