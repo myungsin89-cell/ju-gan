@@ -2021,10 +2021,14 @@ const App = {
         let page2 = '';
         const sps = this.state.specialists.filter(s => s.subject || s.name);
         if (sps.length > 0) {
-            const spCols = 3; // 반별시간표와 동일한 3열 고정
             page2 += `<div class="${p}-doc-title" style="margin-top:0;">전담 시간표</div>`;
-            page2 += `<div class="${p}-grid ${p}-grid-${spCols}">`;
+            page2 += `<div class="${p}-grid ${p}-grid-3">`;
             sps.forEach(sp => { page2 += this._buildSpTableHtml(sp, cls); });
+            // 빈 칸으로 채워 항상 3열×5행(15칸) 유지 → 반별시간표와 동일한 표 크기
+            const emptyCount = 15 - sps.length;
+            for (let i = 0; i < emptyCount; i++) {
+                page2 += `<div style="visibility:hidden;"></div>`;
+            }
             page2 += `</div>`;
         }
 
