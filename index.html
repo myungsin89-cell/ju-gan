@@ -470,6 +470,15 @@
         </div>
     </div>
 
+    <!-- 최종 점검 결과 패널 (print-preview-overlay 위에 표시) -->
+    <div id="final-check-overlay" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center;">
+        <div style="background:#fff; border-radius:16px; padding:28px; max-width:520px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <h3 id="fc-title" style="font-size:1rem; font-weight:700; margin-bottom:16px; color:#1e293b;"></h3>
+            <div id="fc-content"></div>
+            <button onclick="document.getElementById('final-check-overlay').style.display='none'" style="margin-top:20px; width:100%; padding:12px; background:#1e293b; color:#fff; border:none; border-radius:10px; font-size:0.95rem; font-weight:600; cursor:pointer;">확인</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"></script>

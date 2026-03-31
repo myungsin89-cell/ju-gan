@@ -2392,37 +2392,36 @@ const App = {
             });
         }
 
-        // 결과 표시
+        // 결과 표시 (print-preview-overlay 위에 전용 패널 사용)
+        const fcOverlay = document.getElementById('final-check-overlay');
+        const fcTitle = document.getElementById('fc-title');
+        const fcContent = document.getElementById('fc-content');
+
         if (issues.length === 0) {
-            this.showAlert('최종 점검 완료', '✅ 모든 반의 전담 배치와 차시가 정확합니다.');
-            return;
+            fcTitle.textContent = '최종 점검 완료';
+            fcContent.innerHTML = `<div style="text-align:center; font-size:1rem; color:#059669; padding:16px 0;">✅ 모든 반의 전담 배치와 차시가 정확합니다.</div>`;
+        } else {
+            const spIssues = issues.filter(i => i.type === 'sp');
+            const shortIssues = issues.filter(i => i.type === 'short');
+            const overIssues = issues.filter(i => i.type === 'over');
+            fcTitle.textContent = `최종 점검 결과 — ${issues.length}건 발견`;
+            let html = `<div style="font-size:0.85rem; text-align:left;">`;
+            if (spIssues.length > 0) {
+                html += `<div style="font-weight:700; color:#b91c1c; margin-bottom:6px;">⚠️ 전담 불일치 (${spIssues.length}건)</div>`;
+                html += `<ul style="margin:0 0 14px 16px; padding:0; color:#b91c1c;">` + spIssues.map(i => `<li style="margin-bottom:4px;">${i.msg}</li>`).join('') + `</ul>`;
+            }
+            if (shortIssues.length > 0) {
+                html += `<div style="font-weight:700; color:#92400e; margin-bottom:6px;">📉 차시 부족 (${shortIssues.length}건)</div>`;
+                html += `<ul style="margin:0 0 14px 16px; padding:0; color:#92400e;">` + shortIssues.map(i => `<li style="margin-bottom:4px;">${i.msg}</li>`).join('') + `</ul>`;
+            }
+            if (overIssues.length > 0) {
+                html += `<div style="font-weight:700; color:#1d4ed8; margin-bottom:6px;">📈 차시 초과 (${overIssues.length}건)</div>`;
+                html += `<ul style="margin:0 0 14px 16px; padding:0; color:#1d4ed8;">` + overIssues.map(i => `<li style="margin-bottom:4px;">${i.msg}</li>`).join('') + `</ul>`;
+            }
+            html += `</div>`;
+            fcContent.innerHTML = html;
         }
-
-        const spIssues = issues.filter(i => i.type === 'sp');
-        const shortIssues = issues.filter(i => i.type === 'short');
-        const overIssues = issues.filter(i => i.type === 'over');
-
-        let html = `<div style="max-height:400px; overflow-y:auto; font-size:0.85rem; text-align:left;">`;
-        if (spIssues.length > 0) {
-            html += `<div style="font-weight:700; color:#b91c1c; margin-bottom:6px;">⚠️ 전담 불일치 (${spIssues.length}건)</div>`;
-            html += `<ul style="margin:0 0 14px 16px; padding:0; color:#b91c1c;">` + spIssues.map(i => `<li>${i.msg}</li>`).join('') + `</ul>`;
-        }
-        if (shortIssues.length > 0) {
-            html += `<div style="font-weight:700; color:#92400e; margin-bottom:6px;">📉 차시 부족 (${shortIssues.length}건)</div>`;
-            html += `<ul style="margin:0 0 14px 16px; padding:0; color:#92400e;">` + shortIssues.map(i => `<li>${i.msg}</li>`).join('') + `</ul>`;
-        }
-        if (overIssues.length > 0) {
-            html += `<div style="font-weight:700; color:#1d4ed8; margin-bottom:6px;">📈 차시 초과 (${overIssues.length}건)</div>`;
-            html += `<ul style="margin:0 0 14px 16px; padding:0; color:#1d4ed8;">` + overIssues.map(i => `<li>${i.msg}</li>`).join('') + `</ul>`;
-        }
-        html += `</div>`;
-
-        this.dom.modalTitle.textContent = `최종 점검 결과 (${issues.length}건 발견)`;
-        this.dom.modalContent.innerHTML = html;
-        this.dom.modalCancel.classList.add('hide');
-        this.dom.modalConfirm.textContent = '확인';
-        this.dom.modalContainer.classList.remove('hide');
-        this.modalResolve = () => {};
+        fcOverlay.style.display = 'flex';
     },
 
     async printWeeklyGuide() {
