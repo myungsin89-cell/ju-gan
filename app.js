@@ -241,7 +241,19 @@ const App = {
                 // 관리자 색상 셀 클릭 → 확인 후 수정
                 if (e.target.dataset.bgLocked === '1') {
                     this.showConfirm('관리자 설정 시간', '이 교시는 관리자가 설정한 시간입니다.<br>수정하시겠습니까?').then(r => {
-                        if (r) { e.target.removeAttribute('data-bg-locked'); e.target.click(); }
+                        if (r) {
+                            e.target.removeAttribute('data-bg-locked');
+                            const cNum = e.target.dataset.cls, d = e.target.dataset.day, idx = parseInt(e.target.dataset.idx);
+                            if (this.state.selectedSub) {
+                                e.target.value = this.state.selectedSub;
+                                this.state.history[this.state.currentWeek].classes[cNum][d][idx] = this.state.selectedSub;
+                                this.state.isDirty = true;
+                                this.saveData();
+                                this.renderSingleValidationGrid(cNum);
+                                this.calculateAndRenderValidationView();
+                            }
+                            e.target.focus();
+                        }
                     });
                     return;
                 }
