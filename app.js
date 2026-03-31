@@ -107,6 +107,7 @@ const App = {
             menus: {
                 settings: document.getElementById('settings-view'),
                 specialist: document.getElementById('specialist-view'),
+                'specialist-teacher': document.getElementById('specialist-teacher-view'),
                 timetable: document.getElementById('timetable-view'),
                 'timetable-all': document.getElementById('timetable-view')
             },
@@ -190,6 +191,8 @@ const App = {
                 const d = e.target.dataset.day;
                 const idx = parseInt(e.target.dataset.idx);
                 this.state.history[this.state.currentWeek].classes[cNum][d][idx] = e.target.value.trim();
+                const existBg = this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx];
+                if (!existBg) { e.target.style.fontWeight = ''; e.target.style.color = ''; e.target.style.backgroundColor = ''; }
                 this.state.isDirty = true;
                 const saveBtn = e.target.closest('.timetable-section')?.querySelector('.btn-save-class');
                 if (saveBtn) { saveBtn.textContent = '저장'; saveBtn.style.background = '#f59e0b'; saveBtn.style.borderColor = '#f59e0b'; }
@@ -208,6 +211,23 @@ const App = {
             if (e.key === 'ArrowRight' && idx < inputs.length - 1) { e.preventDefault(); inputs[idx + 1].focus(); inputs[idx + 1].select(); }
             else if (e.key === 'ArrowLeft' && idx > 0) { e.preventDefault(); inputs[idx - 1].focus(); inputs[idx - 1].select(); }
         });
+        this.dom.allClassesContainer.addEventListener('keydown', (e) => {
+            if (!e.target.classList.contains('cell-input')) return;
+            const moves = { ArrowRight: [0,1], ArrowLeft: [0,-1], ArrowDown: [1,0], ArrowUp: [-1,0] };
+            if (!moves[e.key]) return;
+            e.preventDefault();
+            const [dp, dd] = moves[e.key];
+            const cNum = e.target.dataset.cls;
+            const curDayIdx = this.days.indexOf(e.target.dataset.day);
+            const curPeriod = parseInt(e.target.dataset.idx);
+            const newDayIdx = curDayIdx + dd;
+            const newPeriod = curPeriod + dp;
+            if (newDayIdx < 0 || newDayIdx >= this.days.length || newPeriod < 0) return;
+            const newDay = this.days[newDayIdx];
+            const next = this.dom.allClassesContainer.querySelector(`.cell-input[data-cls="${cNum}"][data-day="${newDay}"][data-idx="${newPeriod}"]`);
+            if (next) { next.focus(); next.select(); }
+        });
+
         this.dom.allClassesContainer.addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-clear-class') || e.target.classList.contains('btn-clear-class-admin')) {
                 const cNum = e.target.dataset.cls;
@@ -225,9 +245,12 @@ const App = {
                 if (this.state.selectedSub) {
                     e.target.value = this.state.selectedSub;
                     this.state.history[this.state.currentWeek].classes[cNum][d][idx] = this.state.selectedSub;
+                    const existBg2 = this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx];
+                    if (!existBg2) { e.target.style.fontWeight = ''; e.target.style.color = ''; e.target.style.backgroundColor = ''; }
                     changed = true;
                 }
                 if (this.state.selectedSidebarColor !== null && this.state.selectedSidebarColor !== undefined) {
+                    if (!this.state.isAdmin) { this.showAlert('권한 없음', '형광펜 색상은 관리자만 사용할 수 있습니다.'); return; }
                     const color = this.state.selectedSidebarColor;
                     if (!this.state.history[this.state.currentWeek].bgColors) this.state.history[this.state.currentWeek].bgColors = {};
                     if (!this.state.history[this.state.currentWeek].bgColors[cNum]) this.state.history[this.state.currentWeek].bgColors[cNum] = {};
@@ -384,8 +407,8 @@ const App = {
         const checkLoginReady = () => {
             const roomCode = this.dom.loginRoomCode?.value.trim();
             const name = this.dom.loginName?.value.trim();
-            const classNum = this.dom.loginClassNum?.value;
-            const ready = roomCode && name && classNum && parseInt(classNum) >= 1;
+            const classNum = this.dom.loginClassNum?.value.trim();
+            const ready = roomCode && name && (classNum === '전담' || parseInt(classNum) >= 1);
             if (this.dom.btnLogin) this.dom.btnLogin.classList.toggle('active', !!ready);
         };
         this.dom.loginName?.addEventListener('input', checkLoginReady);
@@ -618,11 +641,13 @@ const App = {
     handleLogin() {
         const roomCode = this.dom.loginRoomCode.value.trim();
         const name = this.dom.loginName.value.trim();
-        const classNum = parseInt(this.dom.loginClassNum.value);
+        const rawClass = this.dom.loginClassNum.value.trim();
+        const isSpecialist = rawClass === '전담';
+        const classNum = isSpecialist ? '전담' : parseInt(rawClass);
         if (!roomCode) return this.showAlert('입력 오류', '방 코드를 입력해주세요.');
         if (!name) return this.showAlert('입력 오류', '성함을 입력해주세요.');
-        if (!classNum || classNum < 1) return this.showAlert('입력 오류', '올바른 반 번호를 입력해주세요 (1 이상).');
-        this.state.userProfile = { name, classNum };
+        if (!isSpecialist && (!classNum || classNum < 1)) return this.showAlert('입력 오류', '올바른 반 번호를 입력해주세요 (1 이상) 또는 전담을 입력하세요.');
+        this.state.userProfile = { name, classNum, isSpecialist };
         this.state.roomCode = roomCode;
         this.state.isAdmin = false;
         this.saveData();
@@ -707,7 +732,7 @@ const App = {
             this.dom.userBadge.classList.remove('hide');
             if (this.dom.userInfoText) {
                 const p = this.state.userProfile;
-                this.dom.userInfoText.textContent = `${p.classNum}반 ${p.name} 선생님`;
+                this.dom.userInfoText.textContent = p.isSpecialist ? `전담 ${p.name} 선생님` : `${p.classNum}반 ${p.name} 선생님`;
             }
             const adminBtn = document.getElementById('btn-admin-mode');
             if (adminBtn) adminBtn.classList.remove('hide');
@@ -728,8 +753,15 @@ const App = {
         if (this.dom.userBadge) {
             this.dom.userBadge.classList.toggle('user-card-admin', isAdmin);
         }
-        // 모드 전환 시 적절한 시간표 메뉴로 이동
-        if (isAdmin) {
+        const colorSection = document.getElementById('color-highlighter-section');
+        if (colorSection) colorSection.classList.toggle('hide', !isAdmin);
+        const isSpecialist = !!this.state.userProfile?.isSpecialist;
+        const spTeacherBtn = document.getElementById('btn-specialist-teacher');
+        if (spTeacherBtn) spTeacherBtn.classList.toggle('hide', !(isAdmin || isSpecialist));
+        // 모드 전환 시 적절한 메뉴로 이동
+        if (isSpecialist && !isAdmin) {
+            this.switchMenu('specialist-teacher');
+        } else if (isAdmin) {
             this.switchMenu('timetable-all');
         } else {
             this.switchMenu('timetable');
@@ -754,6 +786,7 @@ const App = {
         else if (menuId === 'timetable-all') this.renderTimetableLayout('all');
         else if (menuId === 'settings') this.renderSettingsView();
         else if (menuId === 'specialist') this.renderSpecialistView();
+        else if (menuId === 'specialist-teacher') this.renderSpecialistTeacherView();
         else if (menuId === 'validation') this.calculateAndRenderValidationView();
     },
 
@@ -995,7 +1028,7 @@ const App = {
                 }
             });
 
-            const shf = (a) => a.sort(() => Math.random() - 0.5); shf(blks); shf(sngs); blks.sort((a,b) => a.tier - b.tier); sngs.sort((a,b) => a.tier - b.tier);
+            const shf = (a) => a.sort(() => Math.random() - 0.5); shf(blks); shf(sngs);
             
             const ass = (sub, size, ps, pe) => {
                 const sd = [...this.days].sort(() => Math.random() - 0.5); 
@@ -1005,15 +1038,15 @@ const App = {
                 if (size > 1) { for(let i=0; i<size; i++) ass(sub, 1, ps, pe); return true; } return false;
             };
 
-            const getBounds = (pref, tier) => {
+            const getBounds = (pref) => {
                 if (pref === 1) return [0, 1]; // 1-2교시
                 if (pref === 2) return [2, 3]; // 3-4교시
                 if (pref === 3) return [4, 5]; // 5-6교시
-                return [tier === 1 ? 0 : (tier === 2 ? 2 : 0), 5]; // 기본 로직
+                return [0, 5]; // 기본: 전체 시간대
             };
 
-            blks.forEach(item => { const b = getBounds(item.pref, item.tier); ass(item.name, item.size, b[0], b[1]); });
-            sngs.forEach(item => { const b = getBounds(item.pref, item.tier); ass(item.name, 1, b[0], b[1]); });
+            blks.forEach(item => { const b = getBounds(item.pref); ass(item.name, item.size, b[0], b[1]); });
+            sngs.forEach(item => { const b = getBounds(item.pref); ass(item.name, 1, b[0], b[1]); });
         }
         this.saveData(); this.renderTimetableLayout(); this.showAlert('배정 완료', '선호 시간대를 고려하여 전체 반 배정이 완료되었습니다.');
     },
@@ -1195,7 +1228,11 @@ const App = {
                     const customBg = wData.bgColors?.[c]?.[d]?.[p] ?? null;
 
                     if (customBg) {
-                        s = `style="background-color:${customBg}; color:#000; font-weight:bold;"`;
+                        if (!this.state.isAdmin) {
+                            s = `style="background-color:${customBg}; color:#000; font-weight:bold; outline:2px solid #f59e0b; outline-offset:-2px;"`;
+                        } else {
+                            s = `style="background-color:${customBg}; color:#000; font-weight:bold;"`;
+                        }
                     } else if (val && isSpLocked) {
                         // 전담 가져오기로 채워진 셀만 전담 색상 적용
                         const sp = this.state.specialists.find(sp => (sp.subject === val || sp.name === val));
@@ -1203,7 +1240,8 @@ const App = {
                     }
                     const lockAttr = isSpLocked ? ' data-sp-locked="1" readonly title="전담 시간 (클릭하면 수정 확인)"' : '';
                     const lockClass = isSpLocked ? ' sp-locked' : '';
-                    h += `<td><input type="text" class="cell-input${lockClass}" ${s} data-cls="${c}" data-day="${d}" data-idx="${p}" value="${val}"${lockAttr}></td>`;
+                    const bgWarnAttr = (customBg && !this.state.isAdmin) ? ' data-bg-warn="1" title="⚠️ 관리자가 지정한 색상 구역입니다"' : '';
+                    h += `<td><input type="text" class="cell-input${lockClass}" ${s} data-cls="${c}" data-day="${d}" data-idx="${p}" value="${val}"${lockAttr}${bgWarnAttr}></td>`;
                 } else h += `<td style="background:#d1d5db; cursor:not-allowed;" title="${p+1}교시는 ${d}요일 수업 없음"></td>`;
             });
             h += `</tr>`;
@@ -1448,6 +1486,71 @@ const App = {
         this.renderSpecialistSummary();
         if(this.state.spPreviewOpen) this.renderSpecialistPreview();
         this.checkSpecialistConflicts();
+    },
+    renderSpecialistTeacherView() {
+        const cont = document.getElementById('spt-boards-container');
+        if (!cont) return;
+        cont.innerHTML = '';
+        this.state.specialists.forEach((sp) => {
+            const div = document.createElement('div'); div.className = 'specialist-table-wrapper';
+            const spName = sp.subject || sp.name || '전담', spDesc = sp.desc || '';
+            let h = `
+                <div class="specialist-table-header" style="background-color:${sp.bg || '#f9fafb'};">
+                    <div class="sp-header-inputs">
+                        <span class="sp-subject-input" style="font-weight:800; font-size:1rem; color:#1e293b;">${spName}</span>
+                        ${spDesc ? `<span class="sp-sep">|</span><span class="sp-desc-input" style="color:#475569;">${spDesc}</span>` : ''}
+                    </div>
+                </div>
+                <table class="excel-table sp-table"><thead><tr><th>교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
+            const maxP = Math.max(...Object.values(this.state.config.periods));
+            for (let p = 0; p < maxP; p++) {
+                h += `<tr><td class="col-head">${p+1}</td>`;
+                this.days.forEach(d => {
+                    if (p < this.state.config.periods[d]) {
+                        const val = sp.data[d] && sp.data[d][p] ? sp.data[d][p] : '';
+                        const mk = sp.marks && sp.marks[`${d}_${p}`];
+                        const style = mk ? `background-color:${mk};` : '';
+                        h += `<td class="sp-cell" style="${style} text-align:center; font-size:0.9rem; padding:8px;">${val}</td>`;
+                    } else h += `<td class="cell-disabled"></td>`;
+                });
+                h += `</tr>`;
+            }
+            div.innerHTML = h + `</tbody></table>`;
+            cont.appendChild(div);
+        });
+        // 반별 미리보기
+        const previewCont = document.getElementById('spt-preview-content');
+        if (!previewCont) return;
+        let ph = '<div class="sp-preview-grid">';
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            ph += `<div class="sp-preview-class-card">
+                <div class="sp-preview-class-title">${c}반</div>
+                <table class="sp-preview-table">
+                    <thead><tr><th>교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead>
+                    <tbody>`;
+            const maxP = Math.max(...Object.values(this.state.config.periods));
+            for (let p = 0; p < maxP; p++) {
+                ph += `<tr><td>${p+1}</td>`;
+                this.days.forEach(d => {
+                    if (p < this.state.config.periods[d]) {
+                        const hits = [];
+                        this.state.specialists.forEach(sp => {
+                            if (sp.data[d] && sp.data[d][p]) {
+                                const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                                if (classes.includes(String(c))) hits.push(sp);
+                            }
+                        });
+                        if (hits.length === 0) ph += `<td class="empty">-</td>`;
+                        else if (hits.length === 1) ph += `<td class="has-sub" style="background-color:${hits[0].bg||'#f9fafb'}; font-size:0.7rem;">${hits[0].subject||'전담'}</td>`;
+                        else ph += `<td class="has-sub" style="background-color:#fee2e2; color:#b91c1c; font-size:0.7rem;">중복!</td>`;
+                    } else ph += `<td style="background:#f1f5f9;"></td>`;
+                });
+                ph += `</tr>`;
+            }
+            ph += `</tbody></table></div>`;
+        }
+        ph += '</div>';
+        previewCont.innerHTML = ph;
     },
     checkSpecialistConflicts() {
         const occ = {}; // { day_period_classNum: count }
