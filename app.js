@@ -195,6 +195,8 @@ const App = {
                 if (!trimmed && this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx]) {
                     this.state.history[this.state.currentWeek].bgColors[cNum][d][idx] = null;
                     e.target.style.backgroundColor = '';
+                    e.target.style.fontWeight = '';
+                    e.target.removeAttribute('data-bg-locked');
                 }
                 e.target.style.fontWeight = '';
                 e.target.style.color = '';
@@ -238,24 +240,9 @@ const App = {
                 const cNum = e.target.dataset.cls;
                 this.clearClass(cNum);
             } else if (e.target.classList.contains('cell-input')) {
-                // 관리자 색상 셀 클릭 → 확인 후 수정
+                // 관리자 색상 셀 → 바로 수정 가능 (잠금 해제)
                 if (e.target.dataset.bgLocked === '1') {
-                    this.showConfirm('관리자 설정 시간', '이 교시는 관리자가 설정한 시간입니다.<br>수정하시겠습니까?').then(r => {
-                        if (r) {
-                            e.target.removeAttribute('data-bg-locked');
-                            const cNum = e.target.dataset.cls, d = e.target.dataset.day, idx = parseInt(e.target.dataset.idx);
-                            if (this.state.selectedSub) {
-                                e.target.value = this.state.selectedSub;
-                                this.state.history[this.state.currentWeek].classes[cNum][d][idx] = this.state.selectedSub;
-                                this.state.isDirty = true;
-                                this.saveData();
-                                this.renderSingleValidationGrid(cNum);
-                                this.calculateAndRenderValidationView();
-                            }
-                            e.target.focus();
-                        }
-                    });
-                    return;
+                    e.target.removeAttribute('data-bg-locked');
                 }
                 // 전담 잠금 셀에 과목/색상 클릭 시도 → 확인 후 적용
                 if (e.target.dataset.spLocked === '1' && (this.state.selectedSub || (this.state.selectedSidebarColor !== null && this.state.selectedSidebarColor !== undefined))) {
@@ -274,7 +261,7 @@ const App = {
                     changed = true;
                 }
                 if (this.state.selectedSidebarColor !== null && this.state.selectedSidebarColor !== undefined) {
-                    if (!this.state.isAdmin) { this.showAlert('권한 없음', '형광펜 색상은 관리자만 사용할 수 있습니다.'); return; }
+                    if (!this.state.isAdmin) return;
                     const color = this.state.selectedSidebarColor;
                     if (!this.state.history[this.state.currentWeek].bgColors) this.state.history[this.state.currentWeek].bgColors = {};
                     if (!this.state.history[this.state.currentWeek].bgColors[cNum]) this.state.history[this.state.currentWeek].bgColors[cNum] = {};
