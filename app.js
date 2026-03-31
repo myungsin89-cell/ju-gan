@@ -190,9 +190,14 @@ const App = {
                 const cNum = e.target.dataset.cls;
                 const d = e.target.dataset.day;
                 const idx = parseInt(e.target.dataset.idx);
-                this.state.history[this.state.currentWeek].classes[cNum][d][idx] = e.target.value.trim();
-                const existBg = this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx];
-                if (!existBg) { e.target.style.fontWeight = ''; e.target.style.color = ''; e.target.style.backgroundColor = ''; }
+                const trimmed = e.target.value.trim();
+                this.state.history[this.state.currentWeek].classes[cNum][d][idx] = trimmed;
+                if (!trimmed && this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx]) {
+                    this.state.history[this.state.currentWeek].bgColors[cNum][d][idx] = null;
+                    e.target.style.backgroundColor = '';
+                }
+                e.target.style.fontWeight = '';
+                e.target.style.color = '';
                 this.state.isDirty = true;
                 const saveBtn = e.target.closest('.timetable-section')?.querySelector('.btn-save-class');
                 if (saveBtn) { saveBtn.textContent = '저장'; saveBtn.style.background = '#f59e0b'; saveBtn.style.borderColor = '#f59e0b'; }
@@ -233,6 +238,13 @@ const App = {
                 const cNum = e.target.dataset.cls;
                 this.clearClass(cNum);
             } else if (e.target.classList.contains('cell-input')) {
+                // 관리자 색상 셀 클릭 → 확인 후 수정
+                if (e.target.dataset.bgLocked === '1') {
+                    this.showConfirm('관리자 설정 시간', '이 교시는 관리자가 설정한 시간입니다.<br>수정하시겠습니까?').then(r => {
+                        if (r) { e.target.removeAttribute('data-bg-locked'); e.target.click(); }
+                    });
+                    return;
+                }
                 // 전담 잠금 셀에 과목/색상 클릭 시도 → 확인 후 적용
                 if (e.target.dataset.spLocked === '1' && (this.state.selectedSub || (this.state.selectedSidebarColor !== null && this.state.selectedSidebarColor !== undefined))) {
                     this.showConfirm('전담 시간 수정', '이 교시는 전담 시간입니다.<br>수정하시겠습니까?').then(r => {
@@ -245,8 +257,8 @@ const App = {
                 if (this.state.selectedSub) {
                     e.target.value = this.state.selectedSub;
                     this.state.history[this.state.currentWeek].classes[cNum][d][idx] = this.state.selectedSub;
-                    const existBg2 = this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx];
-                    if (!existBg2) { e.target.style.fontWeight = ''; e.target.style.color = ''; e.target.style.backgroundColor = ''; }
+                    e.target.style.fontWeight = '';
+                    e.target.style.color = '';
                     changed = true;
                 }
                 if (this.state.selectedSidebarColor !== null && this.state.selectedSidebarColor !== undefined) {
@@ -257,8 +269,8 @@ const App = {
                     if (!this.state.history[this.state.currentWeek].bgColors[cNum][d]) this.state.history[this.state.currentWeek].bgColors[cNum][d] = [];
                     this.state.history[this.state.currentWeek].bgColors[cNum][d][idx] = color;
                     e.target.style.backgroundColor = color || '';
-                    e.target.style.color = (color && color !== '#ffffff') ? '#000' : '';
-                    e.target.style.fontWeight = color ? 'bold' : '';
+                    e.target.style.color = '';
+                    e.target.style.fontWeight = '';
                     changed = true;
                 }
                 if (changed) {
@@ -1230,11 +1242,7 @@ const App = {
                     const customBg = wData.bgColors?.[c]?.[d]?.[p] ?? null;
 
                     if (customBg) {
-                        if (!this.state.isAdmin) {
-                            s = `style="background-color:${customBg}; color:#000; font-weight:bold; outline:2px solid #f59e0b; outline-offset:-2px;"`;
-                        } else {
-                            s = `style="background-color:${customBg}; color:#000; font-weight:bold;"`;
-                        }
+                        s = `style="background-color:${customBg};"`;
                     } else if (val && isSpLocked) {
                         // 전담 가져오기로 채워진 셀만 전담 색상 적용
                         const sp = this.state.specialists.find(sp => (sp.subject === val || sp.name === val));
@@ -1242,8 +1250,8 @@ const App = {
                     }
                     const lockAttr = isSpLocked ? ' data-sp-locked="1" readonly title="전담 시간 (클릭하면 수정 확인)"' : '';
                     const lockClass = isSpLocked ? ' sp-locked' : '';
-                    const bgWarnAttr = (customBg && !this.state.isAdmin) ? ' data-bg-warn="1" title="⚠️ 관리자가 지정한 색상 구역입니다"' : '';
-                    h += `<td><input type="text" class="cell-input${lockClass}" ${s} data-cls="${c}" data-day="${d}" data-idx="${p}" value="${val}"${lockAttr}${bgWarnAttr}></td>`;
+                    const bgLockAttr = (customBg && !this.state.isAdmin) ? ' data-bg-locked="1" title="관리자가 지정한 색상 구역 (클릭하면 수정 확인)"' : '';
+                    h += `<td><input type="text" class="cell-input${lockClass}" ${s} data-cls="${c}" data-day="${d}" data-idx="${p}" value="${val}"${lockAttr}${bgLockAttr}></td>`;
                 } else h += `<td style="background:#d1d5db; cursor:not-allowed;" title="${p+1}교시는 ${d}요일 수업 없음"></td>`;
             });
             h += `</tr>`;
