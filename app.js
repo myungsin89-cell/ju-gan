@@ -270,7 +270,7 @@ const App = {
                     this.state.history[this.state.currentWeek].bgColors[cNum][d][idx] = color;
                     e.target.style.backgroundColor = color || '';
                     e.target.style.color = '';
-                    e.target.style.fontWeight = '';
+                    e.target.style.fontWeight = color ? 'bold' : '';
                     changed = true;
                 }
                 if (changed) {
@@ -1242,7 +1242,7 @@ const App = {
                     const customBg = wData.bgColors?.[c]?.[d]?.[p] ?? null;
 
                     if (customBg) {
-                        s = `style="background-color:${customBg};"`;
+                        s = `style="background-color:${customBg}; font-weight:bold;"`;
                     } else if (val && isSpLocked) {
                         // 전담 가져오기로 채워진 셀만 전담 색상 적용
                         const sp = this.state.specialists.find(sp => (sp.subject === val || sp.name === val));
