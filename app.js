@@ -353,7 +353,6 @@ const App = {
         document.getElementById('btn-ppo-close').addEventListener('click', () => document.getElementById('print-preview-overlay').classList.add('hide'));
         document.getElementById('btn-ppo-print').addEventListener('click', () => this.printPDF());
         document.getElementById('btn-ppo-download').addEventListener('click', () => this.downloadPDF());
-        document.getElementById('btn-ppo-word').addEventListener('click', () => this.downloadWord());
         document.getElementById('btn-clear-all').addEventListener('click', () => this.clearAllClasses());
 
         document.getElementById('btn-add-subject').addEventListener('click', () => { const count = this.dom.subjectList.querySelectorAll('.subject-row').length; this.addSubjectConfigItem('', count); });
