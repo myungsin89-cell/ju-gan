@@ -758,6 +758,8 @@ const App = {
         const isSpecialist = !!this.state.userProfile?.isSpecialist;
         const spTeacherBtn = document.getElementById('btn-specialist-teacher');
         if (spTeacherBtn) spTeacherBtn.classList.toggle('hide', !(isAdmin || isSpecialist));
+        const timetableBtn = document.getElementById('btn-timetable');
+        if (timetableBtn) timetableBtn.classList.toggle('hide', isSpecialist && !isAdmin);
         // 모드 전환 시 적절한 메뉴로 이동
         if (isSpecialist && !isAdmin) {
             this.switchMenu('specialist-teacher');

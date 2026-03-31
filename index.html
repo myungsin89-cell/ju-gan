@@ -240,14 +240,14 @@
             <!-- 3-1. Specialist Teacher View (Read-only) -->
             <section id="specialist-teacher-view" class="hide">
                 <div style="display:flex; gap:16px; align-items:flex-start;">
-                    <div class="card" style="flex:1; min-width:0;">
+                    <div class="card" style="flex:0 0 55%; min-width:0; overflow-x:auto;">
                         <div class="section-header">
                             <h2>전담 시간표</h2>
                             <span class="subtitle" style="font-size:0.8rem;">읽기 전용 · 수정은 관리자에게 문의하세요</span>
                         </div>
                         <div id="spt-boards-container" class="sp-boards-wrap mt-4"></div>
                     </div>
-                    <div class="card" style="flex:0 0 340px; min-width:0;">
+                    <div class="card" style="flex:1; min-width:0;">
                         <div class="section-header" style="padding-bottom:12px;">
                             <h3 style="font-size:1rem;">반별 배치 미리보기</h3>
                             <span class="subtitle" style="font-size:0.8rem;">실시간 반영</span>
@@ -436,8 +436,8 @@
                         </div>
                     </div>
                     <div class="login-row">
-                        <input type="text" id="login-class-num" class="login-input text-center" placeholder="반 (예: 1 또는 전담)">
-                        <input type="text" id="login-name" class="login-input" placeholder="이름 (예: 홍길동)" maxlength="10">
+                        <input type="text" id="login-class-num" class="login-input text-center" placeholder="반">
+                        <input type="text" id="login-name" class="login-input" placeholder="이름" maxlength="10">
                     </div>
                     <button id="btn-login" class="btn-login-submit">시작하기</button>
                 </div>
