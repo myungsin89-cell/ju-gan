@@ -351,6 +351,7 @@ const App = {
         document.getElementById('btn-random-all').addEventListener('click', () => this.randomAssignAll());
         document.getElementById('btn-print-guide').addEventListener('click', () => this.printWeeklyGuide());
         document.getElementById('btn-ppo-close').addEventListener('click', () => document.getElementById('print-preview-overlay').classList.add('hide'));
+        document.getElementById('btn-ppo-check').addEventListener('click', () => this.runFinalCheck());
         document.getElementById('btn-ppo-print').addEventListener('click', () => this.printPDF());
         document.getElementById('btn-ppo-download').addEventListener('click', () => this.downloadPDF());
         document.getElementById('btn-clear-all').addEventListener('click', () => this.clearAllClasses());
@@ -2335,6 +2336,93 @@ const App = {
         a.download = `${gradeText}${this.state.currentWeek}주차_주간학습안내.doc`;
         a.click();
         URL.revokeObjectURL(url);
+    },
+
+    runFinalCheck() {
+        const wData = this.state.history[this.state.currentWeek];
+        if (!wData) return this.showAlert('점검 불가', '현재 주차 데이터가 없습니다.');
+        const targets = wData.targets || {};
+        const issues = [];
+
+        // ① 전담 일치 확인
+        this.state.specialists.forEach(sp => {
+            const spName = sp.subject || '전담';
+            this.days.forEach(d => {
+                const maxP = this.state.config.periods[d] || 0;
+                for (let p = 0; p < maxP; p++) {
+                    const val = sp.data[d] && sp.data[d][p] ? String(sp.data[d][p]).trim() : '';
+                    if (!val) continue;
+                    const classes = val.split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                    classes.forEach(c => {
+                        const cNum = parseInt(c);
+                        if (!cNum || cNum < 1 || cNum > this.state.config.classCount) return;
+                        const cellVal = (wData.classes[cNum]?.[d]?.[p] || '').trim();
+                        if (cellVal !== spName) {
+                            issues.push({
+                                type: 'sp',
+                                msg: `${cNum}반 ${d}요일 ${p+1}교시 — 전담(${spName}) 미입력 (현재: "${cellVal || '빈칸'}")`
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        // ② 차시 목표 달성 확인
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const classData = wData.classes[c] || {};
+            const counts = {};
+            this.state.config.subjects.forEach(s => { counts[s.name] = 0; });
+            this.days.forEach(d => {
+                const mp = this.state.config.periods[d] || 0;
+                for (let p = 0; p < mp; p++) {
+                    const v = (classData[d]?.[p] || '').trim();
+                    if (v && counts[v] !== undefined) counts[v]++;
+                }
+            });
+            this.state.config.subjects.forEach(s => {
+                const target = targets[s.name] || 0;
+                if (target === 0) return;
+                const actual = counts[s.name] || 0;
+                if (actual < target) {
+                    issues.push({ type: 'short', msg: `${c}반 ${s.name} — 목표 ${target}차시 중 ${actual}차시만 입력 (${target - actual}차시 부족)` });
+                } else if (actual > target) {
+                    issues.push({ type: 'over', msg: `${c}반 ${s.name} — 목표 ${target}차시 초과 입력 (${actual}차시)` });
+                }
+            });
+        }
+
+        // 결과 표시
+        if (issues.length === 0) {
+            this.showAlert('최종 점검 완료', '✅ 모든 반의 전담 배치와 차시가 정확합니다.');
+            return;
+        }
+
+        const spIssues = issues.filter(i => i.type === 'sp');
+        const shortIssues = issues.filter(i => i.type === 'short');
+        const overIssues = issues.filter(i => i.type === 'over');
+
+        let html = `<div style="max-height:400px; overflow-y:auto; font-size:0.85rem; text-align:left;">`;
+        if (spIssues.length > 0) {
+            html += `<div style="font-weight:700; color:#b91c1c; margin-bottom:6px;">⚠️ 전담 불일치 (${spIssues.length}건)</div>`;
+            html += `<ul style="margin:0 0 14px 16px; padding:0; color:#b91c1c;">` + spIssues.map(i => `<li>${i.msg}</li>`).join('') + `</ul>`;
+        }
+        if (shortIssues.length > 0) {
+            html += `<div style="font-weight:700; color:#92400e; margin-bottom:6px;">📉 차시 부족 (${shortIssues.length}건)</div>`;
+            html += `<ul style="margin:0 0 14px 16px; padding:0; color:#92400e;">` + shortIssues.map(i => `<li>${i.msg}</li>`).join('') + `</ul>`;
+        }
+        if (overIssues.length > 0) {
+            html += `<div style="font-weight:700; color:#1d4ed8; margin-bottom:6px;">📈 차시 초과 (${overIssues.length}건)</div>`;
+            html += `<ul style="margin:0 0 14px 16px; padding:0; color:#1d4ed8;">` + overIssues.map(i => `<li>${i.msg}</li>`).join('') + `</ul>`;
+        }
+        html += `</div>`;
+
+        this.dom.modalTitle.textContent = `최종 점검 결과 (${issues.length}건 발견)`;
+        this.dom.modalContent.innerHTML = html;
+        this.dom.modalCancel.classList.add('hide');
+        this.dom.modalConfirm.textContent = '확인';
+        this.dom.modalContainer.classList.remove('hide');
+        this.modalResolve = () => {};
     },
 
     async printWeeklyGuide() {
