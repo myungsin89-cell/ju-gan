@@ -65,6 +65,8 @@ const App = {
         // UI 상태는 항상 초기값으로 리셋 (저장값 무시)
         this.state.spPreviewOpen = false;
         this.state.isMarkingMode = false;
+        this.state.sptViewMode = 'specialist';
+        this.state.sptWeek = this.state.currentWeek || 1;
         if (!this.state.config) this.state.config = { grade: '', classCount: 4, periods: { "월": 6, "화": 6, "수": 5, "목": 6, "금": 6 }, subjects: [] };
         if (!this.state.config.adminPin) this.state.config.adminPin = '0000';
 
@@ -1512,6 +1514,18 @@ const App = {
         this.checkSpecialistConflicts();
     },
     renderSpecialistTeacherView() {
+        // 진입 시 주차 동기화 및 버튼 상태 초기화
+        this.state.sptViewMode = 'specialist';
+        this.state.sptWeek = this.state.currentWeek || 1;
+        const weekLabel = document.getElementById('spt-week-label');
+        if (weekLabel) weekLabel.textContent = `${this.state.sptWeek}주차`;
+        const weekSel = document.getElementById('spt-week-selector');
+        if (weekSel) weekSel.style.display = 'none';
+        const btnSpec = document.getElementById('btn-spt-view-specialist');
+        const btnWeek = document.getElementById('btn-spt-view-weekly');
+        if (btnSpec) { btnSpec.className = 'btn-primary-small'; btnSpec.style.fontSize = '0.75rem'; }
+        if (btnWeek) { btnWeek.className = 'btn-secondary btn-sm'; btnWeek.style.fontSize = '0.75rem'; }
+
         const cont = document.getElementById('spt-boards-container');
         if (!cont) return;
         cont.innerHTML = '';
@@ -1543,8 +1557,38 @@ const App = {
             cont.appendChild(div);
         });
         // 반별 미리보기
+        this.renderSptPreviewContent();
+    },
+
+    setSptView(mode) {
+        this.state.sptViewMode = mode;
+        const btnSpec = document.getElementById('btn-spt-view-specialist');
+        const btnWeek = document.getElementById('btn-spt-view-weekly');
+        if (btnSpec && btnWeek) {
+            btnSpec.className = mode === 'specialist' ? 'btn-primary-small' : 'btn-secondary btn-sm';
+            btnSpec.style.fontSize = '0.75rem';
+            btnWeek.className = mode === 'weekly' ? 'btn-primary-small' : 'btn-secondary btn-sm';
+            btnWeek.style.fontSize = '0.75rem';
+        }
+        const weekSel = document.getElementById('spt-week-selector');
+        if (weekSel) weekSel.style.display = mode === 'weekly' ? 'flex' : 'none';
+        this.renderSptPreviewContent();
+    },
+
+    sptChangeWeek(delta) {
+        const newWeek = this.state.sptWeek + delta;
+        if (newWeek < 1 || newWeek > this.state.maxWeek) return;
+        this.state.sptWeek = newWeek;
+        const label = document.getElementById('spt-week-label');
+        if (label) label.textContent = `${newWeek}주차`;
+        this.renderSptPreviewContent();
+    },
+
+    renderSptPreviewContent() {
         const previewCont = document.getElementById('spt-preview-content');
         if (!previewCont) return;
+        const mode = this.state.sptViewMode || 'specialist';
+        const maxP = Math.max(...Object.values(this.state.config.periods));
         let ph = '<div class="sp-preview-grid">';
         for (let c = 1; c <= this.state.config.classCount; c++) {
             ph += `<div class="sp-preview-class-card">
@@ -1552,21 +1596,33 @@ const App = {
                 <table class="sp-preview-table">
                     <thead><tr><th>교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead>
                     <tbody>`;
-            const maxP = Math.max(...Object.values(this.state.config.periods));
             for (let p = 0; p < maxP; p++) {
                 ph += `<tr><td>${p+1}</td>`;
                 this.days.forEach(d => {
                     if (p < this.state.config.periods[d]) {
-                        const hits = [];
-                        this.state.specialists.forEach(sp => {
-                            if (sp.data[d] && sp.data[d][p]) {
-                                const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
-                                if (classes.includes(String(c))) hits.push(sp);
+                        if (mode === 'weekly') {
+                            const weekData = this.state.history[this.state.sptWeek];
+                            const subj = weekData?.classes?.[c]?.[d]?.[p] || '';
+                            if (subj) {
+                                const sp = this.state.specialists.find(s => (s.subject || s.name) === subj);
+                                const bg = sp ? (sp.bg || '#e0f2fe') : '';
+                                const styleStr = bg ? `background-color:${bg};` : '';
+                                ph += `<td class="has-sub" style="${styleStr} font-size:0.7rem;">${subj}</td>`;
+                            } else {
+                                ph += `<td class="empty">-</td>`;
                             }
-                        });
-                        if (hits.length === 0) ph += `<td class="empty">-</td>`;
-                        else if (hits.length === 1) ph += `<td class="has-sub" style="background-color:${hits[0].bg||'#f9fafb'}; font-size:0.7rem;">${hits[0].subject||'전담'}</td>`;
-                        else ph += `<td class="has-sub" style="background-color:#fee2e2; color:#b91c1c; font-size:0.7rem;">중복!</td>`;
+                        } else {
+                            const hits = [];
+                            this.state.specialists.forEach(sp => {
+                                if (sp.data[d] && sp.data[d][p]) {
+                                    const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                                    if (classes.includes(String(c))) hits.push(sp);
+                                }
+                            });
+                            if (hits.length === 0) ph += `<td class="empty">-</td>`;
+                            else if (hits.length === 1) ph += `<td class="has-sub" style="background-color:${hits[0].bg||'#f9fafb'}; font-size:0.7rem;">${hits[0].subject||'전담'}</td>`;
+                            else ph += `<td class="has-sub" style="background-color:#fee2e2; color:#b91c1c; font-size:0.7rem;">중복!</td>`;
+                        }
                     } else ph += `<td style="background:#f1f5f9;"></td>`;
                 });
                 ph += `</tr>`;

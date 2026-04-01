@@ -250,7 +250,15 @@
                     <div class="card" style="flex:1; min-width:0;">
                         <div class="section-header" style="padding-bottom:12px;">
                             <h3 style="font-size:1rem;">반별 배치 미리보기</h3>
-                            <span class="subtitle" style="font-size:0.8rem;">실시간 반영</span>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <button id="btn-spt-view-specialist" class="btn-primary-small" onclick="App.setSptView('specialist')" style="font-size:0.75rem;">전담 배치로 보기</button>
+                                <button id="btn-spt-view-weekly" class="btn-secondary btn-sm" onclick="App.setSptView('weekly')" style="font-size:0.75rem;">주간학습으로 보기</button>
+                            </div>
+                        </div>
+                        <div id="spt-week-selector" style="display:none; align-items:center; gap:8px; margin-bottom:8px; padding:6px 0; border-bottom:1px solid #e5e7eb;">
+                            <button onclick="App.sptChangeWeek(-1)" class="btn-icon">&lt;</button>
+                            <span id="spt-week-label" style="font-size:0.85rem; font-weight:600; color:#475569;">1주차</span>
+                            <button onclick="App.sptChangeWeek(1)" class="btn-icon">&gt;</button>
                         </div>
                         <div id="spt-preview-content" style="overflow-y:auto;"></div>
                     </div>
