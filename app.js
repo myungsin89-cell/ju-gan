@@ -2239,9 +2239,9 @@ const App = {
         for (let c = 1; c <= cc; c++) page1 += this._buildClassTableHtml(c, cls);
         page1 += `</div>`;
 
-        /* 2페이지: 전담 시간표 (전담 보드가 있을 때만) */
+        /* 2페이지: 전담 시간표 (전담 보드가 있을 때만, 이번 주 숨김 제외) */
         let page2 = '';
-        const sps = this.state.specialists.filter(s => s.subject || s.name);
+        const sps = this.state.specialists.filter(s => (s.subject || s.name) && !(s.hiddenWeeks || []).includes(this.state.currentWeek));
         if (sps.length > 0) {
             page2 += `<div class="${p}-doc-title" style="margin-top:0;">전담 시간표</div>`;
             page2 += `<div class="${p}-grid ${p}-grid-3">`;
