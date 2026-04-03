@@ -1471,9 +1471,12 @@ const App = {
             // MATCH CSS: .specialist-table-wrapper
             const div = document.createElement('div'); div.className = 'specialist-table-wrapper';
             const spName = sp.subject || sp.name || '전담', spDesc = sp.desc || '';
-            
+            const isHidden = (sp.hiddenWeeks || []).includes(this.state.currentWeek);
+            if (isHidden) div.style.cssText = 'opacity:0.45; position:relative;';
+
             // MATCH CSS structure: .specialist-table-header, .sp-header-inputs, .sp-subject-input, .sp-desc-input
             let h = `
+                ${isHidden ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="background:rgba(0,0,0,0.55);color:#fff;padding:6px 18px;border-radius:20px;font-weight:700;font-size:0.9rem;">이번 주 숨김 — 주간학습에 미반영</span></div>` : ''}
                 <div class="specialist-table-header" style="background-color:${sp.bg || '#f9fafb'};">
                     <div class="sp-header-inputs">
                         <input type="text" class="sp-subject-input" value="${spName}" placeholder="과목명" oninput="App.updateSpName(${idx}, this.value)">
@@ -1481,6 +1484,7 @@ const App = {
                         <input type="text" class="sp-desc-input" value="${spDesc}" placeholder="한줄 설명(대상)" oninput="App.updateSpDesc(${idx}, this.value)">
                     </div>
                     <div class="sp-header-actions">
+                        <button onclick="App.toggleSpHide(${idx})" style="padding:4px 10px;border-radius:6px;font-size:0.78rem;font-weight:700;border:1.5px solid ${isHidden ? '#6366f1' : '#94a3b8'};background:${isHidden ? '#ede9fe' : '#f1f5f9'};color:${isHidden ? '#4f46e5' : '#475569'};cursor:pointer;">${isHidden ? '이번 주 숨김 ✓' : '이번 주 숨기기'}</button>
                         <div style="position:relative;">
                             <button class="sp-color-btn" onclick="App.toggleColorPicker(${idx})">🎨 색상</button>
                             <div id="sp-color-dropdown-${idx}" class="sp-color-dropdown card">
@@ -2066,9 +2070,34 @@ const App = {
     
     clearClass(cNum) { this.showConfirm('반 시간표 초기화', `${cNum}반의 이번 주 시간표를 모두 지웁니다.<br>계속하시겠습니까?`).then(async r => { if(r){ this.days.forEach(d => this.state.history[this.state.currentWeek].classes[cNum][d] = []); const sc = this.state.history[this.state.currentWeek].specialistCells; if (sc) delete sc[cNum]; this.saveData(); this.renderTimetableLayout(); if (this.state.isAdmin && this.state.roomCode) { const btn = document.querySelector(`.btn-clear-class-admin[data-cls="${cNum}"]`); if (btn) { btn.disabled = true; btn.textContent = '삭제 중...'; } try { await FirebaseDB.saveAdmin(this.state.roomCode, this.state); this.showToast(`✅ ${cNum}반 시간표를 삭제했습니다.`); } catch(e) { this.showToast('❌ 서버 저장 실패: ' + e.message); } finally { if (btn) { btn.disabled = false; btn.textContent = '삭제'; } } } } }); },
     clearAllClasses() { this.showConfirm('전체 시간표 초기화', '모든 반의 이번 주 시간표를 전부 지웁니다.<br>이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?').then(r => { if(r){ for(let c=1; c<=this.state.config.classCount; c++) this.days.forEach(d => this.state.history[this.state.currentWeek].classes[c][d] = []); this.state.history[this.state.currentWeek].specialistCells = {}; this.saveData(); this.renderTimetableLayout(); } }); },
-    createNewWeek() { this.state.maxWeek++; this.state.currentWeek = this.state.maxWeek; this.initWeekData(this.state.currentWeek); this.saveData(); this.renderTimetableLayout(); },
+    createNewWeek() {
+        const prevWeek = this.state.currentWeek;
+        this.state.maxWeek++;
+        this.state.currentWeek = this.state.maxWeek;
+        this.initWeekData(this.state.currentWeek);
+        // 전담 목표·메모는 매주 동일하므로 이전 주차에서 복사
+        const prev = this.state.history[prevWeek];
+        const curr = this.state.history[this.state.currentWeek];
+        if (prev) {
+            curr.specialistTargets = JSON.parse(JSON.stringify(prev.specialistTargets || {}));
+            curr.specialistMemo = prev.specialistMemo || '';
+        }
+        this.saveData();
+        this.renderTimetableLayout();
+    },
     changeWeek(step) { const nw = this.state.currentWeek + step; if (nw > 0 && nw <= this.state.maxWeek) { this.state.currentWeek = nw; this.renderTimetableLayout(); } },
     
+    toggleSpHide(idx) {
+        const sp = this.state.specialists[idx];
+        if (!sp.hiddenWeeks) sp.hiddenWeeks = [];
+        const week = this.state.currentWeek;
+        const i = sp.hiddenWeeks.indexOf(week);
+        if (i === -1) sp.hiddenWeeks.push(week);
+        else sp.hiddenWeeks.splice(i, 1);
+        this.saveData();
+        this.renderSpecialistView();
+    },
+
     importAllSpecialists() {
         this.showConfirm('전담 전체 가져오기', '빈 교시에만 전담 과목을 채웁니다.<br>이미 입력된 교시는 유지됩니다.').then(r => {
             if(!r) return; let ct = 0; const skipped = [];
@@ -2078,6 +2107,7 @@ const App = {
                 const cStr = String(c), classData = wData.classes[cStr];
                 this.state.specialists.forEach(sp => {
                     const sub = sp.subject || sp.name || ''; if(!sub) return;
+                    if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
                     this.days.forEach(d => {
                         for(let p=0; p<this.state.config.periods[d]; p++) {
                             if (sp.data[d] && sp.data[d][p]) {
