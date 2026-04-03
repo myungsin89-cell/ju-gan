@@ -1538,7 +1538,10 @@ const App = {
         this.state.specialists.forEach((sp) => {
             const div = document.createElement('div'); div.className = 'specialist-table-wrapper';
             const spName = sp.subject || sp.name || '전담', spDesc = sp.desc || '';
+            const isHidden = (sp.hiddenWeeks || []).includes(this.state.currentWeek);
+            if (isHidden) div.style.cssText = 'opacity:0.45; position:relative;';
             let h = `
+                ${isHidden ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="background:rgba(0,0,0,0.55);color:#fff;padding:6px 18px;border-radius:20px;font-weight:700;font-size:0.9rem;">이번 주 숨김</span></div>` : ''}
                 <div class="specialist-table-header" style="background-color:${sp.bg || '#f9fafb'};">
                     <div class="sp-header-inputs">
                         <span class="sp-subject-input" style="font-weight:800; font-size:1rem; color:#1e293b;">${spName}</span>
@@ -1763,6 +1766,7 @@ const App = {
                         // Find if any specialist board targets this class for this day/period
                         const hits = [];
                         this.state.specialists.forEach(sp => {
+                            if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
                             if (sp.data[d] && sp.data[d][p]) {
                                 const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
                                 if (classes.includes(String(c))) {
