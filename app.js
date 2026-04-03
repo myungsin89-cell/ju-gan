@@ -1484,7 +1484,6 @@ const App = {
                         <input type="text" class="sp-desc-input" value="${spDesc}" placeholder="한줄 설명(대상)" oninput="App.updateSpDesc(${idx}, this.value)">
                     </div>
                     <div class="sp-header-actions">
-                        <button onclick="App.toggleSpHide(${idx})" style="padding:4px 10px;border-radius:6px;font-size:0.78rem;font-weight:700;border:1.5px solid ${isHidden ? '#6366f1' : '#94a3b8'};background:${isHidden ? '#ede9fe' : '#f1f5f9'};color:${isHidden ? '#4f46e5' : '#475569'};cursor:pointer;">${isHidden ? '이번 주 숨김 ✓' : '이번 주 숨기기'}</button>
                         <div style="position:relative;">
                             <button class="sp-color-btn" onclick="App.toggleColorPicker(${idx})">🎨 색상</button>
                             <div id="sp-color-dropdown-${idx}" class="sp-color-dropdown card">
@@ -1498,6 +1497,9 @@ const App = {
                         </div>
                         <button class="del-btn" onclick="App.deleteSp(${idx})">✕</button>
                     </div>
+                </div>
+                <div style="display:flex;align-items:center;padding:4px 10px;background:${isHidden ? '#ede9fe' : '#f8fafc'};border-bottom:1px solid #e5e7eb;">
+                    <button onclick="App.toggleSpHide(${idx})" style="padding:3px 12px;border-radius:6px;font-size:0.76rem;font-weight:700;border:1.5px solid ${isHidden ? '#6366f1' : '#cbd5e1'};background:${isHidden ? '#ddd6fe' : '#f1f5f9'};color:${isHidden ? '#4f46e5' : '#64748b'};cursor:pointer;">${isHidden ? '✓ 이번 주 숨김 (클릭 시 해제)' : '이번 주 숨기기'}</button>
                 </div>
                 <table class="excel-table sp-table"><thead><tr><th>교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
             const maxP = Math.max(...Object.values(this.state.config.periods));
@@ -1618,6 +1620,7 @@ const App = {
                         } else {
                             const hits = [];
                             this.state.specialists.forEach(sp => {
+                                if ((sp.hiddenWeeks || []).includes(this.state.sptWeek)) return;
                                 if (sp.data[d] && sp.data[d][p]) {
                                     const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
                                     if (classes.includes(String(c))) hits.push(sp);
@@ -1641,6 +1644,7 @@ const App = {
         const maxP = Math.max(...Object.values(this.state.config.periods));
         this.state.specialists.forEach(sp => {
             if (!sp.data) return;
+            if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
             this.days.forEach(d => {
                 for (let p = 0; p < maxP; p++) {
                     const val = sp.data[d] ? sp.data[d][p] : undefined;
