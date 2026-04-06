@@ -1945,12 +1945,14 @@ const App = {
 
         const getAvailable = (idx) => {
             const { boardIdx, d, p } = cells[idx];
+            const usedInBoard = new Set();
             const usedInSlot = new Set();
             for (let i = 0; i < idx; i++) {
-                if (assignment[i] !== null && cells[i].d === d && cells[i].p === p && cells[i].boardIdx !== boardIdx)
-                    usedInSlot.add(assignment[i]);
+                if (assignment[i] === null) continue;
+                if (cells[i].boardIdx === boardIdx) usedInBoard.add(assignment[i]);
+                if (cells[i].d === d && cells[i].p === p && cells[i].boardIdx !== boardIdx) usedInSlot.add(assignment[i]);
             }
-            return classes.filter(cls => !usedInSlot.has(cls));
+            return classes.filter(cls => !usedInBoard.has(cls) && !usedInSlot.has(cls));
         };
 
         const backtrack = (idx) => {
@@ -2352,8 +2354,8 @@ const App = {
                     </th>
                 </tr>
                 <tr>
-                    <th class="${p}-day-th"></th>
-                    ${this.days.map(d => `<th class="${p}-day-th">${d}</th>`).join('')}
+                    <th class="${p}-sp-day-th"></th>
+                    ${this.days.map(d => `<th class="${p}-sp-day-th">${d}</th>`).join('')}
                 </tr>
             </thead><tbody>`;
         for (let row = 0; row < maxP; row++) {
@@ -2475,8 +2477,9 @@ const App = {
             .pt-day-th { background:#f1f5f9 !important; font-weight:700; font-size:10px; color:#475569; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-pd-td { background:#f8fafc; font-weight:700; color:#94a3b8; font-size:9.5px; }
             .pt-disabled-td { background:#f1f5f9; }
-            .pt-sp-name-th { font-size:10.5px; font-weight:800; padding:7px 10px; text-align:center; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            .pt-sp-desc { font-family:inherit; font-weight:600; font-size:10.5px; opacity:0.9; border-left:1.5px solid currentColor; margin-left:10px; padding-left:10px; }
+            .pt-sp-name-th { font-size:9.5px; font-weight:800; padding:3px 6px; text-align:center; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-sp-day-th { background:#f1f5f9; font-weight:700; font-size:9px; color:#475569; padding:2px 1px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-sp-desc { font-family:inherit; font-weight:600; font-size:9.5px; opacity:0.9; border-left:1.5px solid currentColor; margin-left:8px; padding-left:8px; }
             .pt-page-break { page-break-before:always; }
         `;
 
