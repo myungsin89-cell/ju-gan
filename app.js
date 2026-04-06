@@ -519,6 +519,7 @@ const App = {
         gradeSelect.value = '';
         previewCode.textContent = '—';
         confirmBtn.disabled = true;
+        confirmBtn.textContent = '생성하기';
         hideError();
         overlay.classList.remove('hide');
         setTimeout(() => schoolInput.focus(), 50);
@@ -564,6 +565,7 @@ const App = {
                 }
                 this.showToast(`"${roomCode}" 학년이 생성되었습니다.`);
             } catch (e) {
+                console.error('방 생성 오류:', e);
                 confirmBtn.disabled = false;
                 confirmBtn.textContent = '생성하기';
                 showError('학년 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
