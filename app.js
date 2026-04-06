@@ -1924,44 +1924,56 @@ const App = {
 
     _runHelperBacktrack(classes) {
         const specialists = this.state.specialists;
-        const cells = [];
+        const rawCells = [];
         specialists.forEach((sp, boardIdx) => {
             if (!sp.helperCells) return;
             Object.keys(sp.helperCells).forEach(k => {
                 const under = k.indexOf('_');
                 const d = k.slice(0, under);
                 const p = parseInt(k.slice(under + 1));
-                cells.push({ boardIdx, d, p });
+                rawCells.push({ boardIdx, d, p });
             });
         });
-        if (cells.length === 0) return null;
-        // 각 보드별 셀 수가 선택 반 수를 초과하면 불가
-        const boardCellCounts = {};
-        cells.forEach(c => { boardCellCounts[c.boardIdx] = (boardCellCounts[c.boardIdx] || 0) + 1; });
-        for (const count of Object.values(boardCellCounts)) {
-            if (count > classes.length) return null;
-        }
+        if (rawCells.length === 0) return null;
+
+        // 1. MRV 정렬: 같은 요일·교시를 공유하는 다른 보드 셀이 많을수록 먼저 처리
+        const slotConflictCount = (cell) =>
+            rawCells.filter(c => c.d === cell.d && c.p === cell.p && c.boardIdx !== cell.boardIdx).length;
+        const cells = [...rawCells].sort((a, b) => slotConflictCount(b) - slotConflictCount(a));
+
         const assignment = new Array(cells.length).fill(null);
-        // 매번 다른 배정을 위해 섞기
-        const shuffled = [...classes].sort(() => Math.random() - 0.5);
-        const backtrack = (idx) => {
-            if (idx === cells.length) return true;
+
+        const getAvailable = (idx) => {
             const { boardIdx, d, p } = cells[idx];
-            const usedInBoard = new Set();
             const usedInSlot = new Set();
             for (let i = 0; i < idx; i++) {
-                if (cells[i].boardIdx === boardIdx) usedInBoard.add(assignment[i]);
-                if (cells[i].d === d && cells[i].p === p && cells[i].boardIdx !== boardIdx) usedInSlot.add(assignment[i]);
+                if (assignment[i] !== null && cells[i].d === d && cells[i].p === p && cells[i].boardIdx !== boardIdx)
+                    usedInSlot.add(assignment[i]);
             }
-            for (const cls of shuffled) {
-                if (!usedInBoard.has(cls) && !usedInSlot.has(cls)) {
-                    assignment[idx] = cls;
-                    if (backtrack(idx + 1)) return true;
-                    assignment[idx] = null;
+            return classes.filter(cls => !usedInSlot.has(cls));
+        };
+
+        const backtrack = (idx) => {
+            if (idx === cells.length) return true;
+
+            // 2. 셀마다 독립적으로 섞어서 시도
+            const candidates = getAvailable(idx).sort(() => Math.random() - 0.5);
+
+            for (const cls of candidates) {
+                assignment[idx] = cls;
+
+                // 3. Forward Checking: 아직 처리 안 된 셀 중 가능한 반이 0개인 셀이 생기면 즉시 포기
+                let feasible = true;
+                for (let j = idx + 1; j < cells.length; j++) {
+                    if (getAvailable(j).length === 0) { feasible = false; break; }
                 }
+
+                if (feasible && backtrack(idx + 1)) return true;
+                assignment[idx] = null;
             }
             return false;
         };
+
         if (!backtrack(0)) return null;
         return cells.map((cell, i) => ({ ...cell, cls: assignment[i] }));
     },
