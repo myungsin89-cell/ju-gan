@@ -2472,7 +2472,7 @@ const App = {
             .pt-grid-4 { grid-template-columns:repeat(4,1fr); }
             .pt-table { width:100%; height:100%; border-collapse:collapse; table-layout:fixed; font-size:10.5px; text-align:center; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; font-weight:500; letter-spacing:-0.2px; border:1px solid #e2e8f0; page-break-inside:avoid; }
             .pt-col-pd { width:36px; }
-            .pt-table th, .pt-table td { border:1px solid #e2e8f0; padding:6px 1px; overflow:hidden; white-space:nowrap; font-size:9px; letter-spacing:-0.5px; }
+            .pt-table th, .pt-table td { border:1px solid #e2e8f0; padding:6px 1px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:11px; letter-spacing:-0.8px; }
             .pt-class-th { background:#1e293b !important; color:#fff; font-size:12px; font-weight:900; padding:8px 4px; letter-spacing:0.5px; white-space:nowrap; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-day-th { background:#f1f5f9 !important; font-weight:700; font-size:10px; color:#475569; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-pd-td { background:#f8fafc; font-weight:700; color:#94a3b8; font-size:9.5px; }

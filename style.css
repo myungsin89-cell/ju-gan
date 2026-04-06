@@ -464,8 +464,8 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 .ppo-table col.ppo-col-pd { width: 36px; }
 .ppo-table th, .ppo-table td {
     border: 1px solid #e2e8f0; padding: 6px 1px;
-    overflow: hidden; white-space: nowrap;
-    font-size: 9px; letter-spacing: -0.5px;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font-size: 11px; letter-spacing: -0.8px;
 }
 
 /* 반별 시간표 헤더 — 좌상단 셀(반 이름) */
