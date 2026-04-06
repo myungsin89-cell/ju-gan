@@ -17,6 +17,7 @@ const App = {
         history: {},
         isMarkingMode: false,
         markingColor: '#fef08a',
+        isHelperMode: false,
         selectedSub: null,
         selectedSidebarColor: null,
         spPreviewOpen: false,
@@ -345,6 +346,9 @@ const App = {
         
         const btnMarking = document.getElementById('btn-toggle-marking');
         if (btnMarking) btnMarking.addEventListener('click', () => this.toggleMarkingMode());
+
+        const btnHelper = document.getElementById('btn-toggle-helper');
+        if (btnHelper) btnHelper.addEventListener('click', () => this.toggleHelperMode());
 
         const colorPresets = document.querySelectorAll('.mark-color-btn');
         colorPresets.forEach(btn => btn.addEventListener('click', (e) => { this.setMarkingColor(e.target.dataset.color, e.target); }));
@@ -904,7 +908,7 @@ const App = {
                 return;
             }
             // 로그인 상태·UI 상태는 유지하고 나머지만 덮어씀
-            const keep = { userProfile: this.state.userProfile, roomCode: this.state.roomCode, isAdmin: this.state.isAdmin, selectedSub: this.state.selectedSub, selectedSidebarColor: this.state.selectedSidebarColor, spPreviewOpen: false, isMarkingMode: false, markingColor: this.state.markingColor, deferredPrompt: this.state.deferredPrompt };
+            const keep = { userProfile: this.state.userProfile, roomCode: this.state.roomCode, isAdmin: this.state.isAdmin, selectedSub: this.state.selectedSub, selectedSidebarColor: this.state.selectedSidebarColor, spPreviewOpen: false, isMarkingMode: false, isHelperMode: false, markingColor: this.state.markingColor, deferredPrompt: this.state.deferredPrompt };
             this.state = { ...this.state, ...data, ...keep };
             // 새 방이거나 서버에 과목이 없으면 기본 과목 적용
             if (!this.state.config) this.state.config = { grade: '', classCount: 4, periods: { "월": 6, "화": 6, "수": 5, "목": 6, "금": 6 }, subjects: [] };
@@ -1508,7 +1512,8 @@ const App = {
                 this.days.forEach(d => {
                     if (p < this.state.config.periods[d]) {
                         const val = sp.data[d] && sp.data[d][p] ? sp.data[d][p] : '', mk = sp.marks && sp.marks[`${d}_${p}`], style = mk ? `style="background-color:${mk}"` : '';
-                        h += `<td class="sp-cell" ${style} onclick="App.handleSpCellClick(event, ${idx}, '${d}', ${p})"><input type="text" class="cell-input" data-sp-d="${d}" data-sp-p="${p}" value="${val}" oninput="App.updateSpData(${idx}, '${d}', ${p}, this.value)"></td>`;
+                        const isHelperTarget = sp.helperCells && sp.helperCells[`${d}_${p}`];
+                        h += `<td class="sp-cell${isHelperTarget ? ' helper-target' : ''}" ${style} onclick="App.handleSpCellClick(event, ${idx}, '${d}', ${p})"><input type="text" class="cell-input" data-sp-d="${d}" data-sp-p="${p}" value="${val}" oninput="App.updateSpData(${idx}, '${d}', ${p}, this.value)"></td>`;
                     } else h += `<td class="cell-disabled"></td>`;
                 });
                 h += `</tr>`;
@@ -1797,7 +1802,19 @@ const App = {
     },
 
     handleSpCellClick(e, i, d, p) {
-        if (e.target.tagName === 'INPUT') return; 
+        if (e.target.tagName === 'INPUT') return;
+        if (App.state.isHelperMode) {
+            e.preventDefault(); e.stopPropagation();
+            const sp = App.state.specialists[i];
+            if (!sp.helperCells) sp.helperCells = {};
+            const k = `${d}_${p}`;
+            const cell = e.target.closest('td');
+            if (!cell) return;
+            if (sp.helperCells[k]) { delete sp.helperCells[k]; cell.classList.remove('helper-target'); }
+            else { sp.helperCells[k] = true; cell.classList.add('helper-target'); }
+            App.saveData();
+            return;
+        }
         if(App.state.isMarkingMode) { e.preventDefault(); e.stopPropagation(); const sp = App.state.specialists[i]; if(!sp.marks) sp.marks = {}; const k = `${d}_${p}`; const cell = e.target.closest('td'); if(!cell) return; if(sp.marks[k]){ delete sp.marks[k]; cell.style.backgroundColor=''; } else { sp.marks[k]=App.state.markingColor; cell.style.backgroundColor=sp.marks[k]; } App.saveData(); }
     },
     
@@ -1827,8 +1844,126 @@ const App = {
     },
     toggleMarkingMode() {
         this.state.isMarkingMode = !this.state.isMarkingMode; const btn = document.getElementById('btn-toggle-marking'), pkr = document.getElementById('marking-color-picker');
-        if (this.state.isMarkingMode) { btn.textContent = '✍️ 마킹 중지'; btn.style.backgroundColor = this.state.markingColor; pkr.style.display = 'flex'; document.body.classList.add('marking-mode'); }
+        if (this.state.isMarkingMode) { btn.textContent = '✍️ 마킹 중지'; btn.style.backgroundColor = this.state.markingColor; pkr.style.display = 'flex'; document.body.classList.add('marking-mode'); if (this.state.isHelperMode) this.toggleHelperMode(); }
         else { btn.textContent = '✍️ 마킹 시작'; btn.style.backgroundColor = ''; pkr.style.display = 'none'; document.body.classList.remove('marking-mode'); }
+    },
+
+    toggleHelperMode() {
+        this.state.isHelperMode = !this.state.isHelperMode;
+        const btn = document.getElementById('btn-toggle-helper');
+        const runBtn = document.getElementById('btn-run-helper');
+        if (this.state.isHelperMode) {
+            btn.textContent = '🎯 도우미 모드 : ON';
+            btn.classList.add('helper-btn-active');
+            runBtn.style.display = 'inline-flex';
+            document.body.classList.add('helper-mode');
+            if (this.state.isMarkingMode) this.toggleMarkingMode();
+        } else {
+            btn.textContent = '🎯 배정 도우미';
+            btn.classList.remove('helper-btn-active');
+            runBtn.style.display = 'none';
+            document.body.classList.remove('helper-mode');
+        }
+    },
+
+    async openHelperAssignment() {
+        const specialists = this.state.specialists;
+        const hasHelperCells = specialists.some(sp => sp.helperCells && Object.keys(sp.helperCells).length > 0);
+        if (!hasHelperCells) {
+            await this.showAlert('배정 도우미', '먼저 도우미 모드에서 배정할 셀을 선택해주세요.<br>셀을 클릭하면 보라색으로 표시됩니다.');
+            return;
+        }
+        const classCount = this.state.config.classCount;
+        let summaryHTML = '<div style="margin-bottom:14px; padding:10px 12px; background:#f8fafc; border-radius:8px; font-size:0.85rem; color:#475569;">';
+        summaryHTML += '<div style="font-weight:700; margin-bottom:6px; color:#1e293b;">선택된 셀</div>';
+        specialists.forEach(sp => {
+            const count = sp.helperCells ? Object.keys(sp.helperCells).length : 0;
+            if (count > 0) {
+                const name = sp.subject || sp.name || '(이름없음)';
+                summaryHTML += `<div>• <b>${name}</b>: ${count}개 셀</div>`;
+            }
+        });
+        summaryHTML += '</div>';
+        const classBtns = Array.from({ length: classCount }, (_, i) => i + 1).map(c =>
+            `<button type="button" class="helper-class-btn helper-class-btn-on" data-cls="${c}" onclick="this.classList.toggle('helper-class-btn-on')">${c}반</button>`
+        ).join('');
+        const content = `
+            ${summaryHTML}
+            <div style="margin-bottom:8px; font-size:0.9rem; font-weight:600; color:#1e293b;">배정할 반 선택 <span style="font-size:0.78rem; font-weight:400; color:#94a3b8;">(클릭으로 켜기/끄기)</span></div>
+            <div id="helper-class-picker" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">${classBtns}</div>
+            <div style="font-size:0.78rem; color:#94a3b8;">같은 요일·교시에 동일한 반이 두 전담에 겹치지 않도록 자동 배정합니다.</div>
+        `;
+        this.dom.modalTitle.textContent = '배정 도우미';
+        this.dom.modalContent.innerHTML = content;
+        this.dom.modalCancel.classList.remove('hide');
+        this.dom.modalConfirm.textContent = '배정 실행';
+        this.dom.modalContainer.classList.remove('hide');
+        const confirmed = await new Promise(resolve => { this.modalResolve = resolve; });
+        if (!confirmed) return;
+        const classes = [...document.querySelectorAll('.helper-class-btn-on')].map(b => parseInt(b.dataset.cls));
+        if (classes.length === 0) {
+            await this.showAlert('입력 오류', '배정할 반을 하나 이상 선택해주세요.');
+            return;
+        }
+        const result = this._runHelperBacktrack(classes);
+        if (!result) {
+            await this.showAlert('배정 불가', `선택한 셀과 반(${classes.map(c=>c+'반').join(', ')})으로는<br>조건을 만족하는 배정이 불가능합니다.<br><br>셀 선택이나 반 선택을 조정해보세요.`);
+            return;
+        }
+        result.forEach(({ boardIdx, d, p, cls }) => {
+            const sp = this.state.specialists[boardIdx];
+            if (!sp.data) sp.data = {};
+            if (!sp.data[d]) sp.data[d] = [];
+            sp.data[d][p] = String(cls);
+        });
+        this.saveData();
+        this._markSpDirty();
+        this.renderSpecialistView();
+        this.showToast(`✅ 배정 완료! (${fromVal}반~${toVal}반)`);
+    },
+
+    _runHelperBacktrack(classes) {
+        const specialists = this.state.specialists;
+        const cells = [];
+        specialists.forEach((sp, boardIdx) => {
+            if (!sp.helperCells) return;
+            Object.keys(sp.helperCells).forEach(k => {
+                const under = k.indexOf('_');
+                const d = k.slice(0, under);
+                const p = parseInt(k.slice(under + 1));
+                cells.push({ boardIdx, d, p });
+            });
+        });
+        if (cells.length === 0) return null;
+        // 각 보드별 셀 수가 선택 반 수를 초과하면 불가
+        const boardCellCounts = {};
+        cells.forEach(c => { boardCellCounts[c.boardIdx] = (boardCellCounts[c.boardIdx] || 0) + 1; });
+        for (const count of Object.values(boardCellCounts)) {
+            if (count > classes.length) return null;
+        }
+        const assignment = new Array(cells.length).fill(null);
+        // 매번 다른 배정을 위해 섞기
+        const shuffled = [...classes].sort(() => Math.random() - 0.5);
+        const backtrack = (idx) => {
+            if (idx === cells.length) return true;
+            const { boardIdx, d, p } = cells[idx];
+            const usedInBoard = new Set();
+            const usedInSlot = new Set();
+            for (let i = 0; i < idx; i++) {
+                if (cells[i].boardIdx === boardIdx) usedInBoard.add(assignment[i]);
+                if (cells[i].d === d && cells[i].p === p && cells[i].boardIdx !== boardIdx) usedInSlot.add(assignment[i]);
+            }
+            for (const cls of shuffled) {
+                if (!usedInBoard.has(cls) && !usedInSlot.has(cls)) {
+                    assignment[idx] = cls;
+                    if (backtrack(idx + 1)) return true;
+                    assignment[idx] = null;
+                }
+            }
+            return false;
+        };
+        if (!backtrack(0)) return null;
+        return cells.map((cell, i) => ({ ...cell, cls: assignment[i] }));
     },
     setMarkingColor(c, el) { this.state.markingColor = c; document.querySelectorAll('.mark-color-btn').forEach(b => b.classList.remove('active')); if(el) el.classList.add('active'); if(this.state.isMarkingMode) document.getElementById('btn-toggle-marking').style.backgroundColor = c; },
     

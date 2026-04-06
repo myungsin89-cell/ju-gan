@@ -202,6 +202,10 @@
                         <div class="section-header">
                             <h2>전담 보드</h2>
                             <div style="display:flex; gap:8px; align-items:center;">
+                                <div id="helper-toolbar" style="display:flex; gap:8px; align-items:center; padding:4px 8px; border-radius:8px; background:#f9fafb; border:1px solid #e5e7eb;">
+                                    <button id="btn-toggle-helper" class="btn-secondary btn-sm">🎯 배정 도우미</button>
+                                    <button id="btn-run-helper" class="btn-primary-small" style="display:none;" onclick="App.openHelperAssignment()">배정 실행 →</button>
+                                </div>
                                 <div id="marking-toolbar" style="display:flex; gap:8px; align-items:center; padding:4px 8px; border-radius:8px; background:#f9fafb; border:1px solid #e5e7eb;">
                                     <button id="btn-toggle-marking" class="btn-secondary btn-sm">✍️ 마킹 모드 : OFF</button>
                                     <div id="marking-color-picker" style="display:none; gap:6px; margin-left:4px;">

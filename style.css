@@ -255,6 +255,16 @@ body.marking-mode .cell-input, body.marking-mode .sp-ref-input { cursor: crossha
 body.marking-mode .sp-cell { cursor: crosshair; }
 body.marking-mode .cell-input::selection { background: transparent; }
 
+/* 배정 도우미 모드 */
+body.helper-mode .sp-cell { cursor: crosshair; }
+body.helper-mode .cell-input { pointer-events: none; user-select: none; cursor: crosshair; }
+.sp-cell.helper-target { outline: 2.5px dashed #6366f1 !important; outline-offset: -2px; background-color: #eef2ff !important; position: relative; }
+.sp-cell.helper-target::after { content: '✓'; position: absolute; top: 1px; right: 3px; font-size: 0.62rem; color: #6366f1; font-weight: 800; pointer-events: none; line-height: 1; }
+#btn-toggle-helper.helper-btn-active { background: #6366f1; color: #fff; }
+.helper-class-btn { padding: 5px 10px; border-radius: 7px; border: 1.5px solid #c7d2fe; background: #f1f5f9; color: #94a3b8; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.helper-class-btn.helper-class-btn-on { background: #6366f1; border-color: #6366f1; color: #fff; }
+.helper-class-btn:hover { border-color: #6366f1; }
+
 .mark-color-btn { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; }
 .mark-color-btn:hover { transform: scale(1.1); }
 .mark-color-btn.active { border-color: #4b5563; transform: scale(1.1); box-shadow: 0 0 4px rgba(0,0,0,0.2); }
