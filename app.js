@@ -63,6 +63,14 @@ const App = {
             ];
         }
         if (!this.state.history) this.state.history = {};
+        // 마이그레이션: 기존 state.specialists(전역) → 주차별 history[w].specialists
+        if (this.state.specialists && this.state.specialists.length > 0) {
+            for (let w = 1; w <= (this.state.maxWeek || 1); w++) {
+                if (this.state.history[w] && !this.state.history[w].specialists) {
+                    this.state.history[w].specialists = JSON.parse(JSON.stringify(this.state.specialists));
+                }
+            }
+        }
         // UI 상태는 항상 초기값으로 리셋 (저장값 무시)
         this.state.spPreviewOpen = false;
         this.state.isMarkingMode = false;
@@ -93,6 +101,12 @@ const App = {
         localStorage.setItem('school-planner-v4', JSON.stringify(this.state));
     },
 
+    // 주차별 전담 배열 반환 (week 생략 시 currentWeek)
+    _sp(week) {
+        const w = (week !== undefined && week !== null) ? week : this.state.currentWeek;
+        return this.state.history[w]?.specialists ?? this.state.specialists ?? [];
+    },
+
     initWeekData(week) {
         if (!this.state.history[week]) {
             const targets = {};
@@ -101,7 +115,7 @@ const App = {
             for (let cNum = 1; cNum <= this.state.config.classCount; cNum++) {
                 classes[cNum] = { "월":[], "화":[], "수":[], "목":[], "금":[] };
             }
-            this.state.history[week] = { targets, classes, bgColors: {}, specialistTargets: {}, specialistMemo: '', specialistCells: {} };
+            this.state.history[week] = { targets, classes, bgColors: {}, specialistTargets: {}, specialistMemo: '', specialistCells: {}, specialists: [] };
         }
     },
 
@@ -932,6 +946,14 @@ const App = {
             }
             // maxWeek에 맞춰 주차 데이터 초기화 보정
             for (let w = 1; w <= this.state.maxWeek; w++) this.initWeekData(w);
+            // 마이그레이션: 기존 state.specialists(전역) → 주차별 history[w].specialists
+            if (this.state.specialists && this.state.specialists.length > 0) {
+                for (let w = 1; w <= (this.state.maxWeek || 1); w++) {
+                    if (this.state.history[w] && !this.state.history[w].specialists) {
+                        this.state.history[w].specialists = JSON.parse(JSON.stringify(this.state.specialists));
+                    }
+                }
+            }
             // 항상 최신 주차로 이동
             this.state.currentWeek = this.state.maxWeek;
             this.saveData();
@@ -1267,7 +1289,7 @@ const App = {
                         s = `style="background-color:${customBg}; font-weight:bold;"`;
                     } else if (val && isSpLocked) {
                         // 전담 가져오기로 채워진 셀만 전담 색상 적용
-                        const sp = this.state.specialists.find(sp => (sp.subject === val || sp.name === val));
+                        const sp = this._sp().find(sp => (sp.subject === val || sp.name === val));
                         if (sp && sp.bg) s = `style="background-color:${sp.bg}; color:${sp.color || '#000'}; font-weight:bold;"`;
                     }
                     const lockAttr = isSpLocked ? ' data-sp-locked="1" readonly title="전담 시간 (클릭하면 수정 확인)"' : '';
@@ -1473,7 +1495,9 @@ const App = {
     renderSpecialistView() {
         const cont = this.dom.specialistContainer; if (!cont) return;
         cont.innerHTML = '';
-        this.state.specialists.forEach((sp, idx) => {
+        const badge = document.getElementById('sp-week-badge');
+        if (badge) badge.textContent = `${this.state.currentWeek}주차`;
+        this._sp().forEach((sp, idx) => {
             // MATCH CSS: .specialist-table-wrapper
             const div = document.createElement('div'); div.className = 'specialist-table-wrapper';
             const spName = sp.subject || sp.name || '전담', spDesc = sp.desc || '';
@@ -1542,7 +1566,7 @@ const App = {
         const cont = document.getElementById('spt-boards-container');
         if (!cont) return;
         cont.innerHTML = '';
-        this.state.specialists.forEach((sp) => {
+        this._sp().forEach((sp) => {
             const div = document.createElement('div'); div.className = 'specialist-table-wrapper';
             const spName = sp.subject || sp.name || '전담', spDesc = sp.desc || '';
             const isHidden = (sp.hiddenWeeks || []).includes(this.state.currentWeek);
@@ -1620,7 +1644,7 @@ const App = {
                             const weekData = this.state.history[this.state.sptWeek];
                             const subj = weekData?.classes?.[c]?.[d]?.[p] || '';
                             if (subj) {
-                                const sp = this.state.specialists.find(s => (s.subject || s.name) === subj);
+                                const sp = this._sp(this.state.sptWeek).find(s => (s.subject || s.name) === subj);
                                 const bg = sp ? (sp.bg || '#e0f2fe') : '';
                                 const styleStr = bg ? `background-color:${bg};` : '';
                                 ph += `<td class="has-sub" style="${styleStr} font-size:0.7rem;">${subj}</td>`;
@@ -1629,7 +1653,7 @@ const App = {
                             }
                         } else {
                             const hits = [];
-                            this.state.specialists.forEach(sp => {
+                            this._sp(this.state.sptWeek).forEach(sp => {
                                 if ((sp.hiddenWeeks || []).includes(this.state.sptWeek)) return;
                                 if (sp.data[d] && sp.data[d][p]) {
                                     const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
@@ -1652,7 +1676,7 @@ const App = {
     checkSpecialistConflicts() {
         const occ = {}; // { day_period_classNum: count }
         const maxP = Math.max(...Object.values(this.state.config.periods));
-        this.state.specialists.forEach(sp => {
+        this._sp().forEach(sp => {
             if (!sp.data) return;
             if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
             this.days.forEach(d => {
@@ -1689,27 +1713,27 @@ const App = {
             }
         });
     },
-    updateSpName(i, v) { if(!this.state.specialists[i]) return; this.state.specialists[i].subject = v; this.saveData(); this._markSpDirty(); this.renderSpecialistSummary(); if(this.state.spPreviewOpen) this.renderSpecialistPreview(); },
-    updateSpDesc(i, v) { if(!this.state.specialists[i]) return; this.state.specialists[i].desc = v; this.saveData(); this._markSpDirty(); },
-    updateSpData(i, d, p, v) { 
-        if(!this.state.specialists[i]) return;
-        if(!this.state.specialists[i].data) this.state.specialists[i].data = {};
-        if(!this.state.specialists[i].data[d]) this.state.specialists[i].data[d] = [];
-        this.state.specialists[i].data[d][p] = v;
+    updateSpName(i, v) { if(!this._sp()[i]) return; this._sp()[i].subject = v; this.saveData(); this._markSpDirty(); this.renderSpecialistSummary(); if(this.state.spPreviewOpen) this.renderSpecialistPreview(); },
+    updateSpDesc(i, v) { if(!this._sp()[i]) return; this._sp()[i].desc = v; this.saveData(); this._markSpDirty(); },
+    updateSpData(i, d, p, v) {
+        if(!this._sp()[i]) return;
+        if(!this._sp()[i].data) this._sp()[i].data = {};
+        if(!this._sp()[i].data[d]) this._sp()[i].data[d] = [];
+        this._sp()[i].data[d][p] = v;
         this.saveData();
         this._markSpDirty();
         this.renderSpecialistSummary();
         if(this.state.spPreviewOpen) this.renderSpecialistPreview();
         this.checkSpecialistConflicts();
     },
-    setSpColor(i, c) { this.state.specialists[i].bg = c; this.saveData(); this._markSpDirty(); this.renderSpecialistView(); },
+    setSpColor(i, c) { this._sp()[i].bg = c; this.saveData(); this._markSpDirty(); this.renderSpecialistView(); },
     toggleColorPicker(i) {
         const el = document.getElementById(`sp-color-dropdown-${i}`); if (!el) return;
         const shown = el.classList.contains('show'); document.querySelectorAll('.sp-color-dropdown').forEach(d => d.classList.remove('show'));
         if(!shown) el.classList.add('show');
     },
-    deleteSp(i) { this.showConfirm('전담 보드 삭제', '이 전담 보드를 삭제하면 입력된 모든 데이터가 사라집니다.<br>계속하시겠습니까?').then(r => { if(r){ this.state.specialists.splice(i,1); this.saveData(); this._markSpDirty(); this.renderSpecialistView(); } }); },
-    addSpecialistBoard() { this.state.specialists.push({ subject: '', desc: '', data: {}, marks: {}, bg: '#ffffff' }); this.saveData(); this._markSpDirty(); this.renderSpecialistView(); },
+    deleteSp(i) { this.showConfirm('전담 보드 삭제', '이 전담 보드를 삭제하면 입력된 모든 데이터가 사라집니다.<br>계속하시겠습니까?').then(r => { if(r){ this._sp().splice(i,1); this.saveData(); this._markSpDirty(); this.renderSpecialistView(); } }); },
+    addSpecialistBoard() { this._sp().push({ subject: '', desc: '', data: {}, marks: {}, bg: '#ffffff' }); this.saveData(); this._markSpDirty(); this.renderSpecialistView(); },
     _markSpDirty() {
         this.state.isSpDirty = true;
         const btn = document.getElementById('btn-save-specialist');
@@ -1772,7 +1796,7 @@ const App = {
                     if (p < this.state.config.periods[d]) {
                         // Find if any specialist board targets this class for this day/period
                         const hits = [];
-                        this.state.specialists.forEach(sp => {
+                        this._sp().forEach(sp => {
                             if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
                             if (sp.data[d] && sp.data[d][p]) {
                                 const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
@@ -1807,7 +1831,7 @@ const App = {
         if (e.target.tagName === 'INPUT') return;
         if (App.state.isHelperMode) {
             e.preventDefault(); e.stopPropagation();
-            const sp = App.state.specialists[i];
+            const sp = App._sp()[i];
             if (!sp.helperCells) sp.helperCells = {};
             const k = `${d}_${p}`;
             const cell = e.target.closest('td');
@@ -1817,7 +1841,7 @@ const App = {
             App.saveData();
             return;
         }
-        if(App.state.isMarkingMode) { e.preventDefault(); e.stopPropagation(); const sp = App.state.specialists[i]; if(!sp.marks) sp.marks = {}; const k = `${d}_${p}`; const cell = e.target.closest('td'); if(!cell) return; if(sp.marks[k]){ delete sp.marks[k]; cell.style.backgroundColor=''; } else { sp.marks[k]=App.state.markingColor; cell.style.backgroundColor=sp.marks[k]; } App.saveData(); }
+        if(App.state.isMarkingMode) { e.preventDefault(); e.stopPropagation(); const sp = App._sp()[i]; if(!sp.marks) sp.marks = {}; const k = `${d}_${p}`; const cell = e.target.closest('td'); if(!cell) return; if(sp.marks[k]){ delete sp.marks[k]; cell.style.backgroundColor=''; } else { sp.marks[k]=App.state.markingColor; cell.style.backgroundColor=sp.marks[k]; } App.saveData(); }
     },
     
     focusSpConflict(day, period, classNum) {
@@ -1869,7 +1893,7 @@ const App = {
     },
 
     async openHelperAssignment() {
-        const specialists = this.state.specialists;
+        const specialists = this._sp();
         const hasHelperCells = specialists.some(sp => sp.helperCells && Object.keys(sp.helperCells).length > 0);
         if (!hasHelperCells) {
             await this.showAlert('배정 도우미', '먼저 도우미 모드에서 배정할 셀을 선택해주세요.<br>셀을 클릭하면 보라색으로 표시됩니다.');
@@ -1913,7 +1937,7 @@ const App = {
             return;
         }
         result.forEach(({ boardIdx, d, p, cls }) => {
-            const sp = this.state.specialists[boardIdx];
+            const sp = this._sp()[boardIdx];
             if (!sp.data) sp.data = {};
             if (!sp.data[d]) sp.data[d] = [];
             sp.data[d][p] = String(cls);
@@ -1925,7 +1949,7 @@ const App = {
     },
 
     _runHelperBacktrack(classes) {
-        const specialists = this.state.specialists;
+        const specialists = this._sp();
         const rawCells = [];
         specialists.forEach((sp, boardIdx) => {
             if (!sp.helperCells) return;
@@ -1995,9 +2019,9 @@ const App = {
     },
     renderSpecialistSummary() {
         const el = this.dom.specialistSummary; if(!el) return;
-        const subs = [...new Set(this.state.specialists.map(sp => sp.subject || sp.name || '').filter(s => s))], classCount = this.state.config.classCount, sts = {};
+        const subs = [...new Set(this._sp().map(sp => sp.subject || sp.name || '').filter(s => s))], classCount = this.state.config.classCount, sts = {};
         subs.forEach(s => { sts[s] = {}; for(let c=1; c<=classCount; c++) sts[s][c] = 0; });
-        this.state.specialists.forEach(sp => { const sub = sp.subject || sp.name || ''; if(!sub || !sts[sub]) return; this.days.forEach(d => { for(let p=0; p<this.state.config.periods[d]; p++){ const raw = sp.data[d] && sp.data[d][p]; if(!raw) continue; String(raw).split(/[,\s]+/).map(v => parseInt(v.trim())).filter(n => !isNaN(n) && n > 0).forEach(cN => { if(sts[sub][cN] !== undefined) sts[sub][cN]++; }); } }); });
+        this._sp().forEach(sp => { const sub = sp.subject || sp.name || ''; if(!sub || !sts[sub]) return; this.days.forEach(d => { for(let p=0; p<this.state.config.periods[d]; p++){ const raw = sp.data[d] && sp.data[d][p]; if(!raw) continue; String(raw).split(/[,\s]+/).map(v => parseInt(v.trim())).filter(n => !isNaN(n) && n > 0).forEach(cN => { if(sts[sub][cN] !== undefined) sts[sub][cN]++; }); } }); });
         if (subs.length === 0) { el.innerHTML = '<div class="sp-sum-inner"><div class="sp-sum-title">배정 현황</div><p class="p-4 text-xs text-gray-400">전담 보드를 추가해주세요.</p></div>' + this.renderReferenceBoardsHTML(); return; }
         const tgts = this.state.history[this.state.currentWeek].specialistTargets || {};
         let h = `<div class="sp-sum-inner"><div class="sp-sum-title">학급별 전담 시수 집계</div><div class="table-responsive"><table class="sp-sum-table"><thead><tr><th>과목명</th><th>목표</th>`;
@@ -2155,7 +2179,7 @@ const App = {
                     const sub = (cd[d] && cd[d][p]) || '';
                     const customBg = bgColors[d]?.[p] ?? null;
                     const isSpCell = !!(spCells[d]?.[p]);
-                    const sp = isSpCell ? this.state.specialists.find(s => s.subject === sub || s.name === sub) : null;
+                    const sp = isSpCell ? this._sp().find(s => s.subject === sub || s.name === sub) : null;
                     const bg = customBg || (sp && sp.bg) || null;
                     const bgAttr = bg ? ` bgcolor="${bg}"` : '';
                     const bgStyle = bg ? `background:${bg};` : '';
@@ -2240,6 +2264,7 @@ const App = {
         if (prev) {
             curr.specialistTargets = JSON.parse(JSON.stringify(prev.specialistTargets || {}));
             curr.specialistMemo = prev.specialistMemo || '';
+            curr.specialists = JSON.parse(JSON.stringify(prev.specialists || this.state.specialists || []));
         }
         this.saveData();
         this.renderTimetableLayout();
@@ -2247,7 +2272,7 @@ const App = {
     changeWeek(step) { const nw = this.state.currentWeek + step; if (nw > 0 && nw <= this.state.maxWeek) { this.state.currentWeek = nw; this.renderTimetableLayout(); } },
     
     toggleSpHide(idx) {
-        const sp = this.state.specialists[idx];
+        const sp = this._sp()[idx];
         if (!sp.hiddenWeeks) sp.hiddenWeeks = [];
         const week = this.state.currentWeek;
         const i = sp.hiddenWeeks.indexOf(week);
@@ -2264,7 +2289,7 @@ const App = {
             if (!wData.specialistCells) wData.specialistCells = {};
             for (let c = 1; c <= this.state.config.classCount; c++) {
                 const cStr = String(c), classData = wData.classes[cStr];
-                this.state.specialists.forEach(sp => {
+                this._sp().forEach(sp => {
                     const sub = sp.subject || sp.name || ''; if(!sub) return;
                     if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
                     this.days.forEach(d => {
@@ -2323,7 +2348,7 @@ const App = {
                     const sub = (cd[d] && cd[d][row]) || '';
                     const customBg = bgColors[d]?.[row] ?? null;
                     const isSpCell = !!(spCells[d]?.[row]);
-                    const sp = isSpCell ? this.state.specialists.find(s => (s.subject === sub || s.name === sub)) : null;
+                    const sp = isSpCell ? this._sp().find(s => (s.subject === sub || s.name === sub)) : null;
                     const bg = customBg || (sp && sp.bg) || null;
                     const style = bg ? ` style="background-color:${bg};-webkit-print-color-adjust:exact;print-color-adjust:exact;"` : '';
                     h += `<td${style}>${sub}</td>`;
@@ -2392,7 +2417,7 @@ const App = {
 
         /* 2페이지: 전담 시간표 (전담 보드가 있을 때만, 이번 주 숨김 제외) */
         let page2 = '';
-        const sps = this.state.specialists.filter(s => (s.subject || s.name) && !(s.hiddenWeeks || []).includes(this.state.currentWeek));
+        const sps = this._sp().filter(s => (s.subject || s.name) && !(s.hiddenWeeks || []).includes(this.state.currentWeek));
         if (sps.length > 0) {
             page2 += `<div class="${p}-doc-title" style="margin-top:0;">전담 시간표</div>`;
             page2 += `<div class="${p}-grid ${p}-grid-3">`;
@@ -2518,7 +2543,7 @@ const App = {
                 this.days.forEach(d => {
                     if (p < this.state.config.periods[d]) {
                         const sub = (cd[d] && cd[d][p]) || '';
-                        const sp = this.state.specialists.find(s => s.subject === sub || s.name === sub);
+                        const sp = this._sp().find(s => s.subject === sub || s.name === sub);
                         const bg = (sp && sp.bg) ? `background:${sp.bg};` : '';
                         t += `<td style="${tdStyle}${bg}">${sub}</td>`;
                     } else {
@@ -2556,7 +2581,7 @@ const App = {
         for (let c = 1; c <= cc; c++) body += buildClassTable(c);
 
         // 2페이지: 전담 시간표
-        const sps = this.state.specialists.filter(s => s.subject || s.name);
+        const sps = this._sp().filter(s => s.subject || s.name);
         if (sps.length > 0) {
             body += `<br style="page-break-before:always">`;
             body += `<h2 style="text-align:center; font-size:16pt; margin-bottom:16pt;">전담 시간표</h2>`;
@@ -2591,7 +2616,7 @@ const App = {
         const issues = [];
 
         // ① 전담 일치 확인
-        this.state.specialists.forEach(sp => {
+        this._sp().forEach(sp => {
             const spName = sp.subject || '전담';
             this.days.forEach(d => {
                 const maxP = this.state.config.periods[d] || 0;
