@@ -2270,6 +2270,7 @@ const App = {
         this.renderTimetableLayout();
     },
     changeWeek(step) { const nw = this.state.currentWeek + step; if (nw > 0 && nw <= this.state.maxWeek) { this.state.currentWeek = nw; this.renderTimetableLayout(); } },
+    spChangeWeek(step) { const nw = this.state.currentWeek + step; if (nw > 0 && nw <= this.state.maxWeek) { this.state.currentWeek = nw; this.renderSpecialistView(); } },
     
     toggleSpHide(idx) {
         const sp = this._sp()[idx];
