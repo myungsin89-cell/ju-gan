@@ -107,6 +107,18 @@ const App = {
         return this.state.history[w]?.specialists ?? this.state.specialists ?? [];
     },
 
+    // 특정 반·요일·교시에 실제 배정된 전담 보드 반환 (색상 조회용)
+    _spForCell(c, d, p, week) {
+        const cStr = String(c);
+        return this._sp(week).find(sp => {
+            const w = (week !== undefined && week !== null) ? week : this.state.currentWeek;
+            if ((sp.hiddenWeeks || []).includes(w)) return false;
+            if (!sp.data[d] || !sp.data[d][p]) return false;
+            const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+            return classes.includes(cStr);
+        }) || null;
+    },
+
     initWeekData(week) {
         if (!this.state.history[week]) {
             const targets = {};
@@ -1288,8 +1300,8 @@ const App = {
                     if (customBg) {
                         s = `style="background-color:${customBg}; font-weight:bold;"`;
                     } else if (val && isSpLocked) {
-                        // 전담 가져오기로 채워진 셀만 전담 색상 적용
-                        const sp = this._sp().find(sp => (sp.subject === val || sp.name === val));
+                        // 전담 가져오기로 채워진 셀만 전담 색상 적용 (해당 반·교시에 배정한 보드 기준)
+                        const sp = this._spForCell(c, d, p);
                         if (sp && sp.bg) s = `style="background-color:${sp.bg}; color:${sp.color || '#000'}; font-weight:bold;"`;
                     }
                     const lockAttr = isSpLocked ? ' data-sp-locked="1" readonly title="전담 시간 (클릭하면 수정 확인)"' : '';
@@ -1563,13 +1575,22 @@ const App = {
         if (btnSpec) { btnSpec.className = 'btn-primary-small'; btnSpec.style.fontSize = '0.75rem'; }
         if (btnWeek) { btnWeek.className = 'btn-secondary btn-sm'; btnWeek.style.fontSize = '0.75rem'; }
 
+        this._renderSptBoards();
+        // 반별 미리보기
+        this.renderSptPreviewContent();
+    },
+
+    _renderSptBoards() {
         const cont = document.getElementById('spt-boards-container');
         if (!cont) return;
+        const week = this.state.sptWeek;
+        const badge = document.getElementById('spt-board-week-badge');
+        if (badge) badge.textContent = `${week}주차`;
         cont.innerHTML = '';
-        this._sp().forEach((sp) => {
+        this._sp(week).forEach((sp) => {
             const div = document.createElement('div'); div.className = 'specialist-table-wrapper';
             const spName = sp.subject || sp.name || '전담', spDesc = sp.desc || '';
-            const isHidden = (sp.hiddenWeeks || []).includes(this.state.currentWeek);
+            const isHidden = (sp.hiddenWeeks || []).includes(week);
             if (isHidden) div.style.cssText = 'opacity:0.45; position:relative;';
             let h = `
                 ${isHidden ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="background:rgba(0,0,0,0.55);color:#fff;padding:6px 18px;border-radius:20px;font-weight:700;font-size:0.9rem;">이번 주 숨김</span></div>` : ''}
@@ -1596,7 +1617,15 @@ const App = {
             div.innerHTML = h + `</tbody></table>`;
             cont.appendChild(div);
         });
-        // 반별 미리보기
+    },
+
+    sptBoardChangeWeek(delta) {
+        const newWeek = this.state.sptWeek + delta;
+        if (newWeek < 1 || newWeek > this.state.maxWeek) return;
+        this.state.sptWeek = newWeek;
+        const label = document.getElementById('spt-week-label');
+        if (label) label.textContent = `${newWeek}주차`;
+        this._renderSptBoards();
         this.renderSptPreviewContent();
     },
 
@@ -1621,6 +1650,7 @@ const App = {
         this.state.sptWeek = newWeek;
         const label = document.getElementById('spt-week-label');
         if (label) label.textContent = `${newWeek}주차`;
+        this._renderSptBoards();
         this.renderSptPreviewContent();
     },
 
@@ -2179,7 +2209,7 @@ const App = {
                     const sub = (cd[d] && cd[d][p]) || '';
                     const customBg = bgColors[d]?.[p] ?? null;
                     const isSpCell = !!(spCells[d]?.[p]);
-                    const sp = isSpCell ? this._sp().find(s => s.subject === sub || s.name === sub) : null;
+                    const sp = isSpCell ? this._spForCell(c, d, p) : null;
                     const bg = customBg || (sp && sp.bg) || null;
                     const bgAttr = bg ? ` bgcolor="${bg}"` : '';
                     const bgStyle = bg ? `background:${bg};` : '';
@@ -2349,7 +2379,7 @@ const App = {
                     const sub = (cd[d] && cd[d][row]) || '';
                     const customBg = bgColors[d]?.[row] ?? null;
                     const isSpCell = !!(spCells[d]?.[row]);
-                    const sp = isSpCell ? this._sp().find(s => (s.subject === sub || s.name === sub)) : null;
+                    const sp = isSpCell ? this._spForCell(c, d, row) : null;
                     const bg = customBg || (sp && sp.bg) || null;
                     const style = bg ? ` style="background-color:${bg};-webkit-print-color-adjust:exact;print-color-adjust:exact;"` : '';
                     h += `<td${style}>${sub}</td>`;
@@ -2544,7 +2574,7 @@ const App = {
                 this.days.forEach(d => {
                     if (p < this.state.config.periods[d]) {
                         const sub = (cd[d] && cd[d][p]) || '';
-                        const sp = this._sp().find(s => s.subject === sub || s.name === sub);
+                        const sp = this._spForCell(c, d, p);
                         const bg = (sp && sp.bg) ? `background:${sp.bg};` : '';
                         t += `<td style="${tdStyle}${bg}">${sub}</td>`;
                     } else {
