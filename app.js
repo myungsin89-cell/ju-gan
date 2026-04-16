@@ -379,6 +379,7 @@ const App = {
         const colorPresets = document.querySelectorAll('.mark-color-btn');
         colorPresets.forEach(btn => btn.addEventListener('click', (e) => { this.setMarkingColor(e.target.dataset.color, e.target); }));
 
+        document.getElementById('btn-weekly-memo').addEventListener('click', () => this.openWeeklyMemoModal());
         document.getElementById('btn-import-all').addEventListener('click', () => this.importAllSpecialists());
         document.getElementById('btn-random-all').addEventListener('click', () => this.randomAssignAll());
         document.getElementById('btn-print-guide').addEventListener('click', () => this.printWeeklyGuide());
@@ -876,7 +877,8 @@ const App = {
     },
     closeModal(res) {
         this.dom.modalContainer.classList.add('hide');
-        this.dom.modalContainer.querySelector('.modal').classList.remove('modal-wide');
+        const modalEl = this.dom.modalContainer.querySelector('.modal');
+        modalEl.classList.remove('modal-wide', 'modal-memo');
         if (this.modalResolve) { this.modalResolve(res); this.modalResolve = null; }
     },
 
@@ -1187,6 +1189,34 @@ const App = {
         wData.weeklyMemo = val;
         this.saveData();
         this.showToast('전달사항이 저장되었습니다.');
+        // 반별 시간표의 인라인 textarea도 동기화
+        const inlineTA = document.getElementById('weekly-memo-textarea');
+        if (inlineTA && inlineTA.value !== val) inlineTA.value = val;
+    },
+
+    openWeeklyMemoModal() {
+        const week = this.state.currentWeek;
+        const memo = this.state.history[week]?.weeklyMemo || '';
+        const modalEl = this.dom.modalContainer.querySelector('.modal');
+        this.dom.modalTitle.textContent = `${week}주차 전달사항 및 특이사항`;
+        this.dom.modalContent.innerHTML = `
+            <p style="font-size:0.82rem; color:#94a3b8; margin-bottom:10px;">반별 시간표에 표시됩니다. 저장 후 전체 저장을 눌러 공유하세요.</p>
+            <textarea id="memo-modal-textarea"
+                style="width:100%; min-height:160px; padding:12px 14px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.9rem; resize:vertical; box-sizing:border-box; font-family:inherit; color:#374151; line-height:1.7;"
+                placeholder="이번 주 전달사항이나 특이사항을 입력하세요...">${memo}</textarea>`;
+        modalEl.classList.add('modal-memo');
+        this.dom.modalCancel.classList.remove('hide');
+        this.dom.modalConfirm.textContent = '저장';
+        this.dom.modalContainer.classList.remove('hide');
+        const ta = document.getElementById('memo-modal-textarea');
+        if (ta) ta.focus();
+        this.modalResolve = (confirmed) => {
+            modalEl.classList.remove('modal-memo');
+            if (confirmed) {
+                const val = document.getElementById('memo-modal-textarea')?.value ?? '';
+                this.saveWeeklyMemo(val);
+            }
+        };
     },
 
     /* --- Timetable Render --- */
@@ -1218,14 +1248,9 @@ const App = {
             if (mode === 'single') {
                 // 반별 시간표: 왼쪽(시간표+전달사항) / 오른쪽(차시확인+랜덤배정) 컬럼 구조
                 const weeklyMemo = this.state.history[this.state.currentWeek].weeklyMemo || '';
-                const memoBody = this.state.isAdmin
-                    ? `<textarea id="weekly-memo-textarea"
-                            style="width:100%; min-height:80px; padding:10px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.88rem; resize:vertical; box-sizing:border-box; font-family:inherit; color:#374151; line-height:1.6;"
-                            placeholder="이번 주 전달사항이나 특이사항을 입력하세요..."
-                            onblur="App.saveWeeklyMemo(this.value)">${weeklyMemo}</textarea>`
-                    : (weeklyMemo
-                        ? `<p style="font-size:0.88rem; color:#374151; white-space:pre-wrap; line-height:1.7; padding:4px 0;">${weeklyMemo}</p>`
-                        : `<p style="font-size:0.85rem; color:#94a3b8; padding:4px 0;">이번 주 전달사항이 없습니다.</p>`);
+                const memoBody = weeklyMemo
+                    ? `<p id="weekly-memo-textarea" style="font-size:0.88rem; color:#374151; white-space:pre-wrap; line-height:1.7; padding:4px 0;">${weeklyMemo}</p>`
+                    : `<p style="font-size:0.85rem; color:#94a3b8; padding:4px 0;">이번 주 전달사항이 없습니다.</p>`;
                 lh += `
                 <div class="integrated-layout" style="align-items:flex-start;">
                     <div style="flex:3; min-width:0; display:flex; flex-direction:column; gap:16px;">
@@ -1245,7 +1270,6 @@ const App = {
                         <div class="card" style="margin-bottom:0;">
                             <div class="section-header" style="padding-bottom:10px;">
                                 <h3 style="font-size:0.95rem; font-weight:700;">주차 전달사항 및 특이사항</h3>
-                                ${this.state.isAdmin ? `<span class="subtitle" style="font-size:0.8rem;">모든 선생님에게 표시됩니다</span>` : ''}
                             </div>
                             ${memoBody}
                         </div>
@@ -1296,7 +1320,7 @@ const App = {
             this.dom.allClassesContainer.innerHTML = lh;
         }
         // 관리자 전용 버튼: 전체 시간표(all) 모드 + 관리자일 때만 표시
-        const adminOnlyBtns = ['btn-clear-all', 'btn-create-week', 'btn-import-all', 'btn-random-all'];
+        const adminOnlyBtns = ['btn-clear-all', 'btn-create-week', 'btn-weekly-memo', 'btn-import-all', 'btn-random-all'];
         adminOnlyBtns.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.toggle('hide', mode !== 'all' || !this.state.isAdmin);

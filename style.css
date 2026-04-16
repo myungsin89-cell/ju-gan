@@ -319,6 +319,8 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 .modal { background: white; width: 95%; max-width: 500px; border-radius: var(--border-radius); overflow: hidden; animation: slideUp 0.3s ease-out; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
 .modal.modal-wide { max-width: min(95vw, 1100px); width: 95vw; }
 .modal.modal-wide .modal-body { padding: 16px 20px; overflow-y: auto; max-height: 75vh; }
+.modal.modal-memo { max-width: 600px; width: 95vw; }
+.modal.modal-memo .modal-body { padding: 20px 24px; }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .modal-header { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
 .modal-header h3 { font-size: 1rem; font-weight: 700; color: var(--text-main); }
