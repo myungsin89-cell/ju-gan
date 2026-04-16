@@ -127,7 +127,7 @@ const App = {
             for (let cNum = 1; cNum <= this.state.config.classCount; cNum++) {
                 classes[cNum] = { "월":[], "화":[], "수":[], "목":[], "금":[] };
             }
-            this.state.history[week] = { targets, classes, bgColors: {}, specialistTargets: {}, specialistMemo: '', specialistCells: {}, specialists: [] };
+            this.state.history[week] = { targets, classes, bgColors: {}, specialistTargets: {}, specialistMemo: '', weeklyMemo: '', specialistCells: {}, specialists: [] };
         }
     },
 
@@ -1142,7 +1142,7 @@ const App = {
             </tr>`;
         }).join('');
 
-        return `<div class="card" style="margin-top:20px;">
+        return `<div class="card" style="margin-top:0;">
             <div class="section-header" style="padding-bottom:12px;">
                 <div>
                     <h3 style="font-size:0.95rem; font-weight:700;">랜덤 배정 선호 시간 설정</h3>
@@ -1181,6 +1181,14 @@ const App = {
         this.saveData();
     },
 
+    saveWeeklyMemo(val) {
+        const wData = this.state.history[this.state.currentWeek];
+        if (!wData) return;
+        wData.weeklyMemo = val;
+        this.saveData();
+        this.showToast('전달사항이 저장되었습니다.');
+    },
+
     /* --- Timetable Render --- */
     renderTimetableLayout(mode) {
         // mode가 없으면 현재 활성 메뉴 기준으로 판단
@@ -1207,34 +1215,80 @@ const App = {
         let lh = '';
         for (const c of classesToRender) {
             const isLast = (c === classesToRender[classesToRender.length - 1]);
-            lh += `
-            <div class="integrated-layout" style="${isLast ? '' : 'border-bottom: 1.5px solid #f1f5f9; margin-bottom: 20px; padding-bottom: 20px;'}">
-                <div class="timetable-section card" style="margin-bottom:0; min-height:480px; height:480px;">
-                    <div class="section-header" style="padding-bottom:10px;">
-                        <h3><span class="active-class-name">${c}반</span> 시간표</h3>
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            <button class="btn-secondary btn-sm" onclick="App.copyClassTable(${c}, this)" title="표를 복사해 Word에 붙여넣기">복사</button>
-                            ${this.state.isAdmin ? `<button class="btn-clear-class-admin btn-secondary btn-sm" data-cls="${c}" onclick="App.clearClass(${c})">삭제</button>` : ''}
-                            ${this.state.isAdmin || String(this.state.userProfile?.classNum) === String(c) ? `<button class="btn-save-class btn-primary-small" data-cls="${c}" onclick="App.saveClassToServer(${c})">저장</button>` : ''}
+            if (mode === 'single') {
+                // 반별 시간표: 왼쪽(시간표+전달사항) / 오른쪽(차시확인+랜덤배정) 컬럼 구조
+                const weeklyMemo = this.state.history[this.state.currentWeek].weeklyMemo || '';
+                const memoBody = this.state.isAdmin
+                    ? `<textarea id="weekly-memo-textarea"
+                            style="width:100%; min-height:80px; padding:10px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.88rem; resize:vertical; box-sizing:border-box; font-family:inherit; color:#374151; line-height:1.6;"
+                            placeholder="이번 주 전달사항이나 특이사항을 입력하세요..."
+                            onblur="App.saveWeeklyMemo(this.value)">${weeklyMemo}</textarea>`
+                    : (weeklyMemo
+                        ? `<p style="font-size:0.88rem; color:#374151; white-space:pre-wrap; line-height:1.7; padding:4px 0;">${weeklyMemo}</p>`
+                        : `<p style="font-size:0.85rem; color:#94a3b8; padding:4px 0;">이번 주 전달사항이 없습니다.</p>`);
+                lh += `
+                <div class="integrated-layout" style="align-items:flex-start;">
+                    <div style="flex:3; min-width:0; display:flex; flex-direction:column; gap:16px;">
+                        <div class="card" style="margin-bottom:0;">
+                            <div class="section-header" style="padding-bottom:10px;">
+                                <h3><span class="active-class-name">${c}반</span> 시간표</h3>
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    <button class="btn-secondary btn-sm" onclick="App.copyClassTable(${c}, this)" title="표를 복사해 Word에 붙여넣기">복사</button>
+                                    ${this.state.isAdmin ? `<button class="btn-clear-class-admin btn-secondary btn-sm" data-cls="${c}" onclick="App.clearClass(${c})">삭제</button>` : ''}
+                                    ${this.state.isAdmin || String(this.state.userProfile?.classNum) === String(c) ? `<button class="btn-save-class btn-primary-small" data-cls="${c}" onclick="App.saveClassToServer(${c})">저장</button>` : ''}
+                                </div>
+                            </div>
+                            <div class="table-responsive mt-2">
+                                <table class="excel-table">${this.getTimetableGridHtml(c)}</table>
+                            </div>
+                        </div>
+                        <div class="card" style="margin-bottom:0;">
+                            <div class="section-header" style="padding-bottom:10px;">
+                                <h3 style="font-size:0.95rem; font-weight:700;">주차 전달사항 및 특이사항</h3>
+                                ${this.state.isAdmin ? `<span class="subtitle" style="font-size:0.8rem;">모든 선생님에게 표시됩니다</span>` : ''}
+                            </div>
+                            ${memoBody}
                         </div>
                     </div>
-                    <div class="table-responsive mt-2">
-                        <table class="excel-table">${this.getTimetableGridHtml(c)}</table>
+                    <div style="flex:1.5; min-width:0; position:sticky; top:80px; display:flex; flex-direction:column; gap:16px;">
+                        <div class="card" style="margin-bottom:0;">
+                            <div class="section-header" style="padding-bottom:10px;">
+                                <h3>차시 확인</h3>
+                            </div>
+                            <div class="table-responsive mt-2">
+                                <table class="excel-table val-table" id="val-grid-${c}"></table>
+                            </div>
+                        </div>
+                        ${this.renderRandomSettingsCard(c)}
                     </div>
-                </div>
-                <div class="validation-section card" style="margin-bottom:0; min-height:480px; height:480px;">
-                    <div class="section-header" style="padding-bottom:10px;">
-                        <h3>차시 확인</h3>
+                </div>`;
+            } else {
+                // 전체 시간표(all): 기존 레이아웃 유지
+                lh += `
+                <div class="integrated-layout" style="${isLast ? '' : 'border-bottom: 1.5px solid #f1f5f9; margin-bottom: 20px; padding-bottom: 20px;'}">
+                    <div class="timetable-section card" style="margin-bottom:0; min-height:480px; height:480px;">
+                        <div class="section-header" style="padding-bottom:10px;">
+                            <h3><span class="active-class-name">${c}반</span> 시간표</h3>
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <button class="btn-secondary btn-sm" onclick="App.copyClassTable(${c}, this)" title="표를 복사해 Word에 붙여넣기">복사</button>
+                                ${this.state.isAdmin ? `<button class="btn-clear-class-admin btn-secondary btn-sm" data-cls="${c}" onclick="App.clearClass(${c})">삭제</button>` : ''}
+                                ${this.state.isAdmin || String(this.state.userProfile?.classNum) === String(c) ? `<button class="btn-save-class btn-primary-small" data-cls="${c}" onclick="App.saveClassToServer(${c})">저장</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="table-responsive mt-2">
+                            <table class="excel-table">${this.getTimetableGridHtml(c)}</table>
+                        </div>
                     </div>
-                    <div class="table-responsive mt-2">
-                        <table class="excel-table val-table" id="val-grid-${c}"></table>
+                    <div class="validation-section card" style="margin-bottom:0; min-height:480px; height:480px;">
+                        <div class="section-header" style="padding-bottom:10px;">
+                            <h3>차시 확인</h3>
+                        </div>
+                        <div class="table-responsive mt-2">
+                            <table class="excel-table val-table" id="val-grid-${c}"></table>
+                        </div>
                     </div>
-                </div>
-            </div>`;
-        }
-        // 반별 시간표 모드: 랜덤 배정 설정 카드 추가
-        if (mode === 'single' && classesToRender.length > 0) {
-            lh += this.renderRandomSettingsCard(classesToRender[0]);
+                </div>`;
+            }
         }
 
         if (this.dom.allClassesContainer) {
