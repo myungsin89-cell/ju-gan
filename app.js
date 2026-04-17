@@ -2416,6 +2416,9 @@ const App = {
         const range = this.getWeekDateRange(this.state.currentWeek);
         rangeEl.textContent = range || '';
         if (editBtn) editBtn.classList.toggle('hide', !this.state.isAdmin);
+        // 반별 시간표(single)면 날짜를 제목 오른쪽 인라인으로, 전체(all)면 아래에
+        const group = document.querySelector('.week-label-group');
+        if (group) group.classList.toggle('inline-mode', this._timetableMode !== 'all');
     },
     // 날짜 수정 모달 열기
     openWeekDateModal() {
