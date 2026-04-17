@@ -66,7 +66,7 @@ const App = {
         // 마이그레이션: 기존 state.specialists(전역) → 주차별 history[w].specialists
         if (this.state.specialists && this.state.specialists.length > 0) {
             for (let w = 1; w <= (this.state.maxWeek || 1); w++) {
-                if (this.state.history[w] && !this.state.history[w].specialists) {
+                if (this.state.history[w] && (!this.state.history[w].specialists || this.state.history[w].specialists.length === 0)) {
                     this.state.history[w].specialists = JSON.parse(JSON.stringify(this.state.specialists));
                 }
             }
@@ -966,7 +966,7 @@ const App = {
             // 마이그레이션: 기존 state.specialists(전역) → 주차별 history[w].specialists
             if (this.state.specialists && this.state.specialists.length > 0) {
                 for (let w = 1; w <= (this.state.maxWeek || 1); w++) {
-                    if (this.state.history[w] && !this.state.history[w].specialists) {
+                    if (this.state.history[w] && (!this.state.history[w].specialists || this.state.history[w].specialists.length === 0)) {
                         this.state.history[w].specialists = JSON.parse(JSON.stringify(this.state.specialists));
                     }
                 }
