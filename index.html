@@ -285,7 +285,13 @@
                 <div class="week-toolbar card">
                     <div class="week-selector">
                         <button id="btn-prev-week" class="btn-icon">&lt;</button>
-                        <h2 id="current-week-label" class="week-title">1주차 시간표</h2>
+                        <div class="week-label-group">
+                            <h2 id="current-week-label" class="week-title">1주차 시간표</h2>
+                            <div class="week-date-row">
+                                <span id="week-date-range" class="week-date-range"></span>
+                                <button id="btn-edit-week-date" class="btn-edit-week-date hide" title="날짜 수동 수정">✏️</button>
+                            </div>
+                        </div>
                         <button id="btn-next-week" class="btn-icon">&gt;</button>
                         <button id="btn-create-week" class="btn-primary-small ml-4">+ 새 주차 생성</button>
                         <button id="btn-clear-all" class="btn-secondary btn-sm" style="color:#ef4444;">전체 시간표 삭제</button>
@@ -352,6 +358,28 @@
                 navigator.serviceWorker.register('sw.js');
             }
         </script>
+
+        <!-- Week Date Edit Modal -->
+        <div id="week-date-modal" class="modal-overlay hide">
+            <div class="modal" style="max-width:360px;">
+                <header class="modal-header">
+                    <h3 id="week-date-modal-title">주차 날짜 수정</h3>
+                    <button onclick="document.getElementById('week-date-modal').classList.add('hide')" class="btn-close">&times;</button>
+                </header>
+                <div class="modal-body">
+                    <p style="font-size:0.85rem; color:#64748b; margin-bottom:14px;">해당 주차의 시작일(월요일)을 선택하면<br>이후 주차 날짜가 자동으로 계산됩니다.</p>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <label style="font-size:0.9rem; font-weight:600; color:#374151;">시작일 (월요일)</label>
+                        <input type="date" id="week-date-input" class="login-input" style="font-size:1rem; padding:10px 14px;">
+                        <p id="week-date-preview" style="font-size:0.85rem; color:#3b82f6; font-weight:600; min-height:1.4em;"></p>
+                    </div>
+                </div>
+                <footer class="modal-footer">
+                    <button onclick="document.getElementById('week-date-modal').classList.add('hide')" class="btn-secondary btn-sm mr-2">취소</button>
+                    <button onclick="App.saveWeekDate()" class="btn-primary">저장</button>
+                </footer>
+            </div>
+        </div>
 
         <!-- Modal System -->
         <div id="modal-container" class="modal-overlay hide">

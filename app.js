@@ -78,6 +78,8 @@ const App = {
         this.state.sptWeek = this.state.currentWeek || 1;
         if (!this.state.config) this.state.config = { grade: '', classCount: 4, periods: { "월": 6, "화": 6, "수": 5, "목": 6, "금": 6 }, subjects: [] };
         if (!this.state.config.adminPin) this.state.config.adminPin = '0000';
+        // weekAnchor: { week: N, startDate: 'YYYY-MM-DD' } - 주차 날짜 기준점
+        if (!this.state.config.weekAnchor) this.state.config.weekAnchor = null;
 
         // Data Migration: subjects string[] -> {name, blockSize}[]
         if (this.state.config.subjects && this.state.config.subjects.length > 0) {
@@ -177,6 +179,7 @@ const App = {
         document.getElementById('btn-prev-week').addEventListener('click', () => this.changeWeek(-1));
         document.getElementById('btn-next-week').addEventListener('click', () => this.changeWeek(1));
         document.getElementById('btn-create-week').addEventListener('click', () => this.createNewWeek());
+        document.getElementById('btn-edit-week-date').addEventListener('click', () => this.openWeekDateModal());
         
         this.dom.weekTargetContainer.addEventListener('input', (e) => {
             if (e.target.classList.contains('target-input-global')) {
@@ -1228,6 +1231,7 @@ const App = {
         }
         this._timetableMode = mode;
         this.dom.weekLabel.textContent = `${this.state.currentWeek}주차 시간표`;
+        this.updateWeekDateDisplay();
         const tgts = this.state.history[this.state.currentWeek].targets, subs = this.state.config.subjects;
         let th = `<div class="target-table-wrapper"><table class="target-table"><thead><tr><th>목표 차시</th>`;
         subs.forEach(s => th += `<th>${s.name}</th>`);
@@ -2379,6 +2383,90 @@ const App = {
     },
     changeWeek(step) { const nw = this.state.currentWeek + step; if (nw > 0 && nw <= this.state.maxWeek) { this.state.currentWeek = nw; this.renderTimetableLayout(); } },
     spChangeWeek(step) { const nw = this.state.currentWeek + step; if (nw > 0 && nw <= this.state.maxWeek) { this.state.currentWeek = nw; this.renderSpecialistView(); } },
+
+    // ── 주차 날짜 계산 ──────────────────────────────────────────
+    // anchor { week, startDate:'YYYY-MM-DD' } 기준으로 week번째 주의 월요일 반환
+    getWeekMonday(week) {
+        const anchor = this.state.config?.weekAnchor;
+        if (!anchor || !anchor.startDate) return null;
+        const base = new Date(anchor.startDate + 'T00:00:00');
+        const diff = (week - anchor.week) * 7;
+        const mon = new Date(base);
+        mon.setDate(base.getDate() + diff);
+        return mon;
+    },
+    // 주차의 "M월 D일(요일)" 형식 날짜 반환 (offset: 0=월, 4=금)
+    _fmtDate(monday, offset) {
+        const days = ['월','화','수','목','금'];
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + offset);
+        return `${d.getMonth() + 1}월 ${d.getDate()}일(${days[offset]})`;
+    },
+    // 주차 날짜 범위 문자열 반환. anchor 없으면 null
+    getWeekDateRange(week) {
+        const mon = this.getWeekMonday(week);
+        if (!mon) return null;
+        return `${this._fmtDate(mon, 0)} ~ ${this._fmtDate(mon, 4)}`;
+    },
+    // 주차 날짜 표시 업데이트
+    updateWeekDateDisplay() {
+        const rangeEl = document.getElementById('week-date-range');
+        const editBtn = document.getElementById('btn-edit-week-date');
+        if (!rangeEl) return;
+        const range = this.getWeekDateRange(this.state.currentWeek);
+        rangeEl.textContent = range || '';
+        if (editBtn) editBtn.classList.toggle('hide', !this.state.isAdmin);
+    },
+    // 날짜 수정 모달 열기
+    openWeekDateModal() {
+        const modal = document.getElementById('week-date-modal');
+        const input = document.getElementById('week-date-input');
+        const preview = document.getElementById('week-date-preview');
+        const title = document.getElementById('week-date-modal-title');
+        if (!modal || !input) return;
+        title.textContent = `${this.state.currentWeek}주차 날짜 수정`;
+        // 기존 anchor에서 이 주차 월요일 계산
+        const mon = this.getWeekMonday(this.state.currentWeek);
+        if (mon) {
+            input.value = mon.toISOString().slice(0, 10);
+        } else {
+            input.value = '';
+        }
+        const updatePreview = () => {
+            if (!input.value) { preview.textContent = ''; return; }
+            const d = new Date(input.value + 'T00:00:00');
+            if (d.getDay() !== 1) {
+                preview.textContent = '⚠️ 월요일 날짜를 선택해주세요.';
+                preview.style.color = '#ef4444';
+            } else {
+                const fri = new Date(d); fri.setDate(d.getDate() + 4);
+                const fmtD = dt => `${dt.getMonth()+1}월 ${dt.getDate()}일`;
+                preview.textContent = `${this.state.currentWeek}주차: ${fmtD(d)}(월) ~ ${fmtD(fri)}(금)`;
+                preview.style.color = '#3b82f6';
+            }
+        };
+        input.oninput = updatePreview;
+        updatePreview();
+        modal.classList.remove('hide');
+    },
+    // 날짜 저장 (새 anchor 설정)
+    saveWeekDate() {
+        const input = document.getElementById('week-date-input');
+        if (!input || !input.value) return;
+        const d = new Date(input.value + 'T00:00:00');
+        if (d.getDay() !== 1) {
+            this.showAlert('입력 오류', '월요일 날짜를 선택해주세요.');
+            return;
+        }
+        this.state.config.weekAnchor = { week: this.state.currentWeek, startDate: input.value };
+        this.saveData();
+        document.getElementById('week-date-modal').classList.add('hide');
+        this.updateWeekDateDisplay();
+        this.showToast(`✅ ${this.state.currentWeek}주차 날짜가 저장되었습니다.`);
+        if (this.state.isAdmin && this.state.roomCode) {
+            FirebaseDB.saveAdmin(this.state.roomCode, this.state).catch(e => this.showToast('⚠️ 서버 저장 실패: ' + e.message));
+        }
+    },
     
     toggleSpHide(idx) {
         const sp = this._sp()[idx];
