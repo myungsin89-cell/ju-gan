@@ -78,6 +78,7 @@ const FirebaseDB = {
                 targets: wData.targets || {},
                 specialistTargets: wData.specialistTargets || {},
                 specialistMemo: wData.specialistMemo || '',
+                weeklyMemo: wData.weeklyMemo || '',
                 specialistCells: wData.specialistCells || {},
                 specialists: wData.specialists || [],
                 classes: {},
@@ -134,6 +135,7 @@ const FirebaseDB = {
                 targets: wData.targets || {},
                 specialistTargets: wData.specialistTargets || {},
                 specialistMemo: wData.specialistMemo || '',
+                weeklyMemo: wData.weeklyMemo || '',
                 specialistCells: wData.specialistCells || {},
                 specialists: wData.specialists || []
             })));
