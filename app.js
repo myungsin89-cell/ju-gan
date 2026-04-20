@@ -1186,15 +1186,24 @@ const App = {
         this.saveData();
     },
 
-    saveWeeklyMemo(val) {
+    async saveWeeklyMemo(val) {
         const wData = this.state.history[this.state.currentWeek];
         if (!wData) return;
         wData.weeklyMemo = val;
         this.saveData();
-        this.showToast('전달사항이 저장되었습니다.');
         // 반별 시간표의 인라인 textarea도 동기화
         const inlineTA = document.getElementById('weekly-memo-textarea');
         if (inlineTA && inlineTA.value !== val) inlineTA.value = val;
+        if (this.state.roomCode) {
+            try {
+                await FirebaseDB.saveAdmin(this.state.roomCode, this.state);
+                this.showToast('✅ 전달사항이 저장되었습니다.');
+            } catch (e) {
+                this.showToast('❌ 서버 저장 실패: ' + e.message);
+            }
+        } else {
+            this.showToast('전달사항이 저장되었습니다.');
+        }
     },
 
     openWeeklyMemoModal() {
