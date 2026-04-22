@@ -2841,6 +2841,7 @@ const App = {
 
         // ① 전담 일치 확인
         this._sp().forEach(sp => {
+            if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
             const spName = sp.subject || '전담';
             this.days.forEach(d => {
                 const maxP = this.state.config.periods[d] || 0;
