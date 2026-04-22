@@ -1431,7 +1431,7 @@ const App = {
             if (s2) { const c2 = cts[s2]||0, t2 = targets[s2]||0; h += `<td style="font-weight:600; color:var(--text-sub); font-size:0.85rem;">${s2}</td><td class="${this.getValClass(c2, t2)}">${c2}/${t2}</td>`; }
             else h += `<td></td><td></td>`; h += `</tr>`;
         }
-        const act = Object.values(cts).reduce((a, b) => a + b, 0), tar = subs.reduce((a, s) => a + (targets[s.name] || 0), 0);
+        const act = subs.reduce((a, s) => a + (cts[s.name] || 0), 0), tar = subs.reduce((a, s) => a + (targets[s.name] || 0), 0);
         h += `<tr style="border-top: 1.5px solid var(--border-color);">
                 <td colspan="2" style="font-weight:700; color:var(--text-main); background:#f9fafb;">주간 총계</td>
                 <td colspan="2" class="${this.getValClass(act, tar)}" style="font-weight:800; font-size:0.9rem;">${act} / ${tar}</td>
