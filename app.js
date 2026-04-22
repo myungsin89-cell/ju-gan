@@ -224,11 +224,13 @@ const App = {
                 const idx = parseInt(e.target.dataset.idx);
                 const trimmed = e.target.value.trim();
                 this.state.history[this.state.currentWeek].classes[cNum][d][idx] = trimmed;
-                if (!trimmed && this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx]) {
-                    this.state.history[this.state.currentWeek].bgColors[cNum][d][idx] = null;
+                if (!trimmed) {
+                    if (this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx]) {
+                        this.state.history[this.state.currentWeek].bgColors[cNum][d][idx] = null;
+                        e.target.removeAttribute('data-bg-locked');
+                    }
                     e.target.style.backgroundColor = '';
                     e.target.style.fontWeight = '';
-                    e.target.removeAttribute('data-bg-locked');
                 }
                 e.target.style.fontWeight = '';
                 e.target.style.color = '';
@@ -317,6 +319,12 @@ const App = {
                     e.target.style.backgroundColor = color || '';
                     e.target.style.color = '';
                     e.target.style.fontWeight = color ? 'bold' : '';
+                    changed = true;
+                } else if (this.state.selectedSidebarColor === null && this.state.isAdmin && this.state.history[this.state.currentWeek].bgColors?.[cNum]?.[d]?.[idx]) {
+                    this.state.history[this.state.currentWeek].bgColors[cNum][d][idx] = null;
+                    e.target.style.backgroundColor = '';
+                    e.target.style.fontWeight = '';
+                    e.target.removeAttribute('data-bg-locked');
                     changed = true;
                 }
                 if (changed) {
