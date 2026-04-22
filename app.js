@@ -2501,45 +2501,51 @@ const App = {
     },
 
     importAllSpecialists() {
-        this.showConfirm('전담 전체 가져오기', '빈 교시에만 전담 과목을 채웁니다.<br>이미 입력된 교시는 유지됩니다.').then(r => {
-            if(!r) return; let ct = 0; const skipped = [];
-            const wData = this.state.history[this.state.currentWeek];
-            if (!wData.specialistCells) wData.specialistCells = {};
-            for (let c = 1; c <= this.state.config.classCount; c++) {
-                const cStr = String(c), classData = wData.classes[cStr];
-                this._sp().forEach(sp => {
-                    const sub = sp.subject || sp.name || ''; if(!sub) return;
-                    if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
-                    this.days.forEach(d => {
-                        for(let p=0; p<this.state.config.periods[d]; p++) {
-                            if (sp.data[d] && sp.data[d][p]) {
-                                const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
-                                if (classes.includes(cStr)) {
-                                    if (!classData[d][p]) {
-                                        classData[d][p] = sub;
-                                        ct++;
-                                        // 전담 가져온 셀로 표시
-                                        if (!wData.specialistCells[cStr]) wData.specialistCells[cStr] = {};
-                                        if (!wData.specialistCells[cStr][d]) wData.specialistCells[cStr][d] = {};
-                                        wData.specialistCells[cStr][d][p] = true;
-                                    } else {
-                                        skipped.push(`${c}반 ${d}요일 ${p+1}교시 (${sub})`);
-                                    }
+        const wData = this.state.history[this.state.currentWeek];
+        const toImport = [], conflicts = [];
+
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const cStr = String(c), classData = wData.classes[cStr];
+            this._sp().forEach(sp => {
+                const sub = sp.subject || sp.name || ''; if (!sub) return;
+                if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
+                this.days.forEach(d => {
+                    for (let p = 0; p < this.state.config.periods[d]; p++) {
+                        if (sp.data[d] && sp.data[d][p]) {
+                            const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                            if (classes.includes(cStr)) {
+                                if (!classData[d][p]) {
+                                    toImport.push({ cStr, d, p, sub });
+                                } else {
+                                    conflicts.push(`${c}반 ${d}요일 ${p+1}교시 — 현재 <b>${classData[d][p]}</b> 때문에 <b>${sub}</b> 반영 불가`);
                                 }
                             }
                         }
-                    });
+                    }
                 });
-            }
+            });
+        }
+
+        let msg = `빈 교시 <b>${toImport.length}개</b>에 전담 과목이 반영됩니다.`;
+        if (conflicts.length > 0) {
+            msg += `<div style="margin-top:12px; padding:12px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca;">
+                <div style="font-weight:700; color:#dc2626; margin-bottom:8px;">⚠️ 이미 내용이 있어 반영되지 않는 교시 (${conflicts.length}개)</div>
+                <div style="font-size:0.82rem; color:#b91c1c; line-height:2;">${conflicts.map(s => `• ${s}`).join('<br>')}</div>
+            </div>
+            <div style="margin-top:10px; font-size:0.85rem; color:#6b7280;">위 교시는 건너뛰고 나머지만 반영합니다.<br>취소 후 직접 수정하고 다시 가져올 수 있습니다.</div>`;
+        }
+
+        this.showConfirm('전담 전체 가져오기', msg).then(r => {
+            if (!r) return;
+            if (!wData.specialistCells) wData.specialistCells = {};
+            toImport.forEach(({ cStr, d, p, sub }) => {
+                wData.classes[cStr][d][p] = sub;
+                if (!wData.specialistCells[cStr]) wData.specialistCells[cStr] = {};
+                if (!wData.specialistCells[cStr][d]) wData.specialistCells[cStr][d] = {};
+                wData.specialistCells[cStr][d][p] = true;
+            });
             this.saveData(); this.renderTimetableLayout();
-            let msg = `총 ${ct}개 빈 교시에 전담 과목이 반영되었습니다.`;
-            if (skipped.length > 0) {
-                msg += `<div style="margin-top:12px; padding:12px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca;">
-                    <div style="font-weight:700; color:#dc2626; margin-bottom:8px;">⚠️ 이미 입력되어 반영되지 않은 교시 (${skipped.length}개)</div>
-                    <div style="font-size:0.82rem; color:#b91c1c; line-height:1.9;">${skipped.map(s => `• ${s}`).join('<br>')}</div>
-                </div>`;
-            }
-            this.showAlert('가져오기 완료', msg);
+            this.showAlert('가져오기 완료', `총 ${toImport.length}개 교시에 전담 과목이 반영되었습니다.`);
         });
     },
     
