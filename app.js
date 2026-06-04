@@ -1504,29 +1504,50 @@ const App = {
             table.innerHTML = h + '</tbody>';
         }
 
-        // 2. Weekly Per-Class Deviation (Class vs Subject for Current Week)
-        const weekData = history[this.state.currentWeek];
-        const targets = weekData.targets || {};
+        // 2. Cumulative Per-Class Deviation (Class vs Subject up to Current Week)
+        const currentWeekNum = parseInt(this.state.currentWeek) || 1;
         const devContainer = document.getElementById('class-deviation-container');
         if (devContainer) {
             let h = `<div class="table-responsive"><table class="excel-table deviation-table"><thead><tr><th class="dev-class-col">반 / 과목</th>`;
             subs.forEach(s => h += `<th class="dev-sub-col">${s.name}</th>`);
             h += `</tr></thead><tbody>`;
 
-            for (let c = 1; c <= classCount; c++) {
-                const cd = weekData.classes[c] || {};
-                const classCounts = {};
-                subs.forEach(s => classCounts[s.name] = 0);
-                this.days.forEach(d => {
-                    (cd[d] || []).forEach(val => {
-                        if (val && classCounts[val] !== undefined) classCounts[val]++;
+            // Calculate cumulative targets from week 1 up to currentWeekNum
+            const cumulativeTargets = {};
+            subs.forEach(s => cumulativeTargets[s.name] = 0);
+            for (let w = 1; w <= currentWeekNum; w++) {
+                const wData = history[w];
+                if (wData) {
+                    const wTargets = wData.targets || {};
+                    subs.forEach(s => {
+                        cumulativeTargets[s.name] += (wTargets[s.name] || 0);
                     });
-                });
+                }
+            }
+
+            for (let c = 1; c <= classCount; c++) {
+                // Calculate cumulative actual hours for class c from week 1 up to currentWeekNum
+                const cumulativeActuals = {};
+                subs.forEach(s => cumulativeActuals[s.name] = 0);
+
+                for (let w = 1; w <= currentWeekNum; w++) {
+                    const wData = history[w];
+                    if (wData) {
+                        const cd = wData.classes[c] || {};
+                        this.days.forEach(d => {
+                            (cd[d] || []).forEach(val => {
+                                if (val && cumulativeActuals[val] !== undefined) {
+                                    cumulativeActuals[val]++;
+                                }
+                            });
+                        });
+                    }
+                }
 
                 h += `<tr style="cursor:pointer;" onclick="App.showClassDeviationDetail(${c})"><td class="col-head dev-class-col">${c}반 <span class="btn-detail-badge">기록보기</span></td>`;
                 subs.forEach(s => {
                     const sub = s.name;
-                    const diff = classCounts[sub] - (targets[sub] || 0);
+                    const diff = cumulativeActuals[sub] - cumulativeTargets[sub];
                     let color = '';
                     if (diff > 0) color = 'background-color:#fee2e2; color:#b91c1c; font-weight:bold;';
                     else if (diff < 0) color = 'background-color:#fffbeb; color:#92400e; font-weight:bold;';
@@ -1546,7 +1567,7 @@ const App = {
         const maxWeek = this.state.maxWeek;
 
         let h = `<div class="deviation-detail-wrap">
-            <p class="mb-4 text-sm text-gray-600"><strong>${cNum}반</strong>의 주차별 과목별 편차 기록입니다. (0이 아닌 칸을 확인하세요)</p>
+            <p class="mb-4 text-sm text-gray-600"><strong>${cNum}반</strong>의 주차별 과목별 누적 편차 기록입니다. (해당 주차까지 누적된 편차)</p>
             <div class="table-responsive" style="max-height:65vh; border:1px solid var(--border-color); border-radius:8px; overflow:auto;">
                 <table class="excel-table" style="font-size:0.8rem;">
                     <thead class="sticky top-0 bg-gray-50">
@@ -1554,24 +1575,34 @@ const App = {
                     </thead>
                     <tbody>`;
         
+        const cumulativeTargets = {};
+        const cumulativeActuals = {};
+        subs.forEach(s => {
+            cumulativeTargets[s.name] = 0;
+            cumulativeActuals[s.name] = 0;
+        });
+
         for (let w = 1; w <= maxWeek; w++) {
             const weekData = history[w];
             if (!weekData) continue;
             
             const currTargets = weekData.targets || {};
             const cd = weekData.classes[cNum] || {};
-            const counts = {}; subs.forEach(s => counts[s.name] = 0);
+            
+            subs.forEach(s => {
+                cumulativeTargets[s.name] += (currTargets[s.name] || 0);
+            });
             
             this.days.forEach(d => {
                 (cd[d] || []).forEach(v => {
-                    if (v && counts[v] !== undefined) counts[v]++;
+                    if (v && cumulativeActuals[v] !== undefined) cumulativeActuals[v]++;
                 });
             });
 
             h += `<tr><td class="col-head" style="background:#f9fafb;">${w}주</td>`;
             subs.forEach(s => {
                 const sub = s.name;
-                const diff = counts[sub] - (currTargets[sub] || 0);
+                const diff = cumulativeActuals[sub] - cumulativeTargets[sub];
                 const color = diff === 0 ? 'color:#cbd5e1;' : (diff > 0 ? 'color:#ef4444; font-weight:bold;' : 'color:#f59e0b; font-weight:bold;');
                 h += `<td style="${color}">${diff > 0 ? '+' : ''}${diff}</td>`;
             });
@@ -1580,7 +1611,7 @@ const App = {
         
         h += `</tbody></table></div></div>`;
 
-        this.dom.modalTitle.textContent = `${cNum}반 상세 시수 기록`;
+        this.dom.modalTitle.textContent = `${cNum}반 상세 시수 기록 (누적)`;
         this.dom.modalContent.innerHTML = h;
         this.dom.modalCancel.classList.add('hide');
         this.dom.modalConfirm.textContent = '닫기';
