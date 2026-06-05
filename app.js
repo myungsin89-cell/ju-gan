@@ -133,6 +133,87 @@ const App = {
         }
     },
 
+    isClassInSpecialist(sp, cNum, week) {
+        const cStr = String(cNum);
+        const isHidden = (sp.hiddenWeeks || []).includes(week);
+        if (isHidden) return false;
+        for (const d of this.days) {
+            if (!sp.data[d]) continue;
+            for (let p = 0; p < sp.data[d].length; p++) {
+                const val = sp.data[d][p];
+                if (!val) continue;
+                const classes = String(val).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                if (classes.includes(cStr)) return true;
+            }
+        }
+        return false;
+    },
+
+    renderSpecialistTimetablesForClassHtml(cNum) {
+        const week = this.state.currentWeek;
+        const matchingSps = this._sp(week).filter(sp => this.isClassInSpecialist(sp, cNum, week));
+        if (matchingSps.length === 0) return '';
+
+        let h = `<div class="class-specialist-timetables-section mt-4" style="margin-top:16px;">
+                    <div class="card" style="margin-bottom:0; display:flex; flex-direction:column; gap:16px;">
+                        <div class="section-header" style="padding-bottom:10px;">
+                            <h3 style="font-size:0.95rem; font-weight:700;">🏫 우리 반 배정 전담 시간표</h3>
+                            <p class="subtitle" style="font-size:0.8rem; margin-top:3px;">우리 반(${cNum}반) 수업이 포함된 전담 선생님들의 전체 시간표입니다.</p>
+                        </div>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; width:100%;">`;
+
+        matchingSps.forEach(sp => {
+            const spName = sp.subject || sp.name || '전담';
+            const spDesc = sp.desc || '';
+            h += `<div class="specialist-table-wrapper read-only-sp" style="background:#fff; border:1px solid var(--border-color); border-radius:12px; overflow:hidden; box-shadow:0 2px 4px -1px rgb(0 0 0 / 0.05);">
+                    <div class="specialist-table-header" style="background-color:${sp.bg || '#f8fafc'}; padding:8px 12px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                        <div class="sp-header-inputs" style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-weight:800; font-size:0.9rem; color:#1e293b;">${spName}</span>
+                            ${spDesc ? `<span class="sp-sep" style="color:#cbd5e1; font-size:0.8rem;">|</span><span style="color:#64748b; font-size:0.8rem; font-weight:500;">${spDesc}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="excel-table sp-table" style="font-size: 0.8rem; border-collapse: collapse; width: 100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="height:26px; font-size:0.75rem; background:#f8fafc; font-weight:600; color:var(--text-sub); width:40px; border:1px solid var(--border-color);">교시</th>
+                                    ${this.days.map(d => `<th style="height:26px; font-size:0.75rem; background:#f8fafc; font-weight:600; color:var(--text-sub); border:1px solid var(--border-color);">${d}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+            const maxP = Math.max(...Object.values(this.state.config.periods));
+            for (let p = 0; p < maxP; p++) {
+                h += `<tr><td class="col-head" style="height:26px; font-size:0.8rem; font-weight:bold; background:#f3f4f6; color:var(--text-sub); text-align:center; border:1px solid var(--border-color);">${p+1}</td>`;
+                this.days.forEach(d => {
+                    if (p < this.state.config.periods[d]) {
+                        const val = sp.data[d] && sp.data[d][p] ? sp.data[d][p] : '';
+                        const classes = String(val).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                        const isMyClass = classes.includes(String(cNum));
+                        
+                        let style = 'border:1px solid var(--border-color); height:26px; text-align:center; font-size:0.8rem; padding:6px;';
+                        let cellClass = 'sp-cell';
+                        if (isMyClass) {
+                            style += 'background-color:var(--primary-light); color:var(--primary-dark); font-weight:bold; box-shadow: inset 0 0 0 2px var(--primary-color);';
+                            cellClass += ' my-class-highlight';
+                        } else {
+                            const mk = sp.marks && sp.marks[`${d}_${p}`] ? sp.marks[`${d}_${p}`] : '';
+                            if (mk) style += `background-color:${mk};`;
+                        }
+                        h += `<td class="${cellClass}" style="${style}">${val}</td>`;
+                    } else {
+                        h += `<td class="cell-disabled" style="background-color:#d1d5db; height:26px; border:1px solid var(--border-color);"></td>`;
+                    }
+                });
+                h += `</tr>`;
+            }
+            h += `</tbody></table></div></div>`;
+        });
+
+        h += `</div></div></div>`;
+        return h;
+    },
+
     cacheDOM() {
         this.dom = {
             menus: {
@@ -1294,6 +1375,7 @@ const App = {
                             </div>
                             ${memoBody}
                         </div>
+                        ${this.renderSpecialistTimetablesForClassHtml(c)}
                     </div>
                     <div style="flex:1.5; min-width:0; position:sticky; top:80px; display:flex; flex-direction:column; gap:16px;">
                         <div class="card" style="margin-bottom:0;">
