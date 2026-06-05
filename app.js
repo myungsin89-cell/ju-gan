@@ -812,7 +812,7 @@ const App = {
     },
     updateNavForRole() {
         const isAdmin = this.state.isAdmin;
-        const adminOnlyIds = ['btn-settings', 'btn-validation', 'btn-specialist', 'btn-timetable-all'];
+        const adminOnlyIds = ['btn-settings', 'btn-specialist', 'btn-timetable-all'];
         adminOnlyIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.toggle('hide', !isAdmin);
@@ -1474,7 +1474,8 @@ const App = {
             subs.forEach(s => {
                 const target = annT[s.name] || 0;
                 sumTarget += target;
-                h += `<td class="text-center"><input type="text" inputmode="numeric" class="val-ann-input" style="width:100%; border:none; text-align:center; font-weight:700;" value="${target}" onchange="App.setAnnualTarget('${s.name}', this.value)"></td>`;
+                const inputStyle = this.state.isAdmin ? 'width:100%; border:none; text-align:center; font-weight:700;' : 'width:100%; border:none; text-align:center; font-weight:700; background:transparent; pointer-events:none;';
+                h += `<td class="text-center"><input type="text" inputmode="numeric" class="val-ann-input" style="${inputStyle}" value="${target}" ${this.state.isAdmin ? '' : 'readonly'} onchange="App.setAnnualTarget('${s.name}', this.value)"></td>`;
             });
             h += `<td class="text-center font-bold" style="background:#f8fafc;">${sumTarget}</td></tr>`;
 
@@ -1621,6 +1622,7 @@ const App = {
     },
 
     setAnnualTarget(sub, val) {
+        if (!this.state.isAdmin) return;
         if (!this.state.config.annualTargets) this.state.config.annualTargets = {};
         this.state.config.annualTargets[sub] = parseInt(val) || 0;
         this.saveData();
