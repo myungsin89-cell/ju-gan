@@ -1587,18 +1587,18 @@ const App = {
             table.innerHTML = h + '</tbody>';
         }
 
-        // 2. Cumulative Per-Class Deviation (Class vs Subject up to Current Week)
-        const currentWeekNum = parseInt(this.state.currentWeek) || 1;
+        // 2. Cumulative Per-Class Deviation (Class vs Subject for All Weeks)
+        const maxWeekNum = parseInt(this.state.maxWeek) || 1;
         const devContainer = document.getElementById('class-deviation-container');
         if (devContainer) {
             let h = `<div class="table-responsive"><table class="excel-table deviation-table"><thead><tr><th class="dev-class-col">반 / 과목</th>`;
             subs.forEach(s => h += `<th class="dev-sub-col">${s.name}</th>`);
             h += `</tr></thead><tbody>`;
 
-            // Calculate cumulative targets from week 1 up to currentWeekNum
+            // Calculate cumulative targets from week 1 up to maxWeekNum
             const cumulativeTargets = {};
             subs.forEach(s => cumulativeTargets[s.name] = 0);
-            for (let w = 1; w <= currentWeekNum; w++) {
+            for (let w = 1; w <= maxWeekNum; w++) {
                 const wData = history[w];
                 if (wData) {
                     const wTargets = wData.targets || {};
@@ -1609,11 +1609,11 @@ const App = {
             }
 
             for (let c = 1; c <= classCount; c++) {
-                // Calculate cumulative actual hours for class c from week 1 up to currentWeekNum
+                // Calculate cumulative actual hours for class c from week 1 up to maxWeekNum
                 const cumulativeActuals = {};
                 subs.forEach(s => cumulativeActuals[s.name] = 0);
 
-                for (let w = 1; w <= currentWeekNum; w++) {
+                for (let w = 1; w <= maxWeekNum; w++) {
                     const wData = history[w];
                     if (wData) {
                         const cd = wData.classes[c] || {};
