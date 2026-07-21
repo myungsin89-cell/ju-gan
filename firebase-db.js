@@ -229,7 +229,7 @@ const FirebaseDB = {
             const classes = wData.classes || {};
             for (const [classNum, classData] of Object.entries(classes)) {
                 saves.push(
-                    wRef.collection(collectionName).doc(String(w)).collection('classes').doc(String(classNum)).set(this._clean({
+                    wRef.collection('classes').doc(String(classNum)).set(this._clean({
                         timetable: classData || {},
                         bgColors: (wData.bgColors || {})[classNum] || {}
                     }))
