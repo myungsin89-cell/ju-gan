@@ -1139,6 +1139,7 @@ const App = {
             // 로그인 상태·UI 상태는 유지하고 나머지만 덮어씀
             const keep = { userProfile: this.state.userProfile, roomCode: this.state.roomCode, isAdmin: this.state.isAdmin, selectedSub: this.state.selectedSub, selectedSidebarColor: this.state.selectedSidebarColor, spPreviewOpen: false, isMarkingMode: false, isHelperMode: false, markingColor: this.state.markingColor, deferredPrompt: this.state.deferredPrompt };
             this.state = { ...this.state, ...data, ...keep };
+            this.syncSemesterState(this.state.currentSemester);
             // 새 방이거나 서버에 과목이 없으면 기본 과목 적용
             if (!this.state.config) this.state.config = { grade: '', classCount: 4, periods: { "월": 6, "화": 6, "수": 5, "목": 6, "금": 6 }, subjects: [] };
             if (!this.state.config.subjects || this.state.config.subjects.length === 0) {
@@ -2643,7 +2644,14 @@ const App = {
             }
         });
         this.state.config.subjects = subs;
-        this.saveData();
+
+        // 학기 변경 및 개학일 반영
+        const selectedSem = this._selectedSemInSettings || this.state.currentSemester || 1;
+        const semStartDateInput = document.getElementById('input-sem-start-date');
+        const semStartDate = semStartDateInput?.value || null;
+
+        this.switchSemester(selectedSem, semStartDate);
+
         if (this.state.isAdmin && this.state.roomCode) {
             try {
                 await FirebaseDB.saveAdmin(this.state.roomCode, this.state);
@@ -2652,7 +2660,7 @@ const App = {
                 return;
             }
         }
-        this.showAlert('설정 저장 완료', '변경된 설정이 저장되었습니다.').then(() => this.switchMenu('timetable'));
+        this.showAlert('설정 저장 완료', `${selectedSem}학기 설정이 저장되었습니다.`).then(() => this.switchMenu('timetable'));
     },
     
     clearClass(cNum) { this.showConfirm('반 시간표 초기화', `${cNum}반의 이번 주 시간표를 모두 지웁니다.<br>계속하시겠습니까?`).then(async r => { if(r){ this.days.forEach(d => this.state.history[this.state.currentWeek].classes[cNum][d] = []); const sc = this.state.history[this.state.currentWeek].specialistCells; if (sc) delete sc[cNum]; this.saveData(); this.renderTimetableLayout(); if (this.state.isAdmin && this.state.roomCode) { const btn = document.querySelector(`.btn-clear-class-admin[data-cls="${cNum}"]`); if (btn) { btn.disabled = true; btn.textContent = '삭제 중...'; } try { await FirebaseDB.saveAdmin(this.state.roomCode, this.state); this.showToast(`✅ ${cNum}반 시간표를 삭제했습니다.`); } catch(e) { this.showToast('❌ 서버 저장 실패: ' + e.message); } finally { if (btn) { btn.disabled = false; btn.textContent = '삭제'; } } } } }); },
