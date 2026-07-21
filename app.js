@@ -6,6 +6,8 @@ const App = {
     state: {
         currentWeek: 1,
         maxWeek: 1,
+        currentSemester: 1,
+        semesters: null,
         config: {
             grade: '',
             classCount: 4,
@@ -63,6 +65,29 @@ const App = {
             ];
         }
         if (!this.state.history) this.state.history = {};
+        if (!this.state.currentSemester) this.state.currentSemester = 1;
+
+        // 학기 마이그레이션: 기존 history -> 1학기로 보존
+        if (!this.state.semesters) {
+            this.state.semesters = {
+                1: {
+                    history: this.state.history || {},
+                    maxWeek: this.state.maxWeek || 1,
+                    currentWeek: this.state.currentWeek || 1,
+                    weekAnchor: this.state.config?.weekAnchor || null,
+                    annualTargets: this.state.config?.annualTargets || {}
+                },
+                2: {
+                    history: {},
+                    maxWeek: 1,
+                    currentWeek: 1,
+                    weekAnchor: null,
+                    annualTargets: {}
+                }
+            };
+        }
+        this.syncSemesterState(this.state.currentSemester);
+
         // 마이그레이션: 기존 state.specialists(전역) → 주차별 history[w].specialists
         if (this.state.specialists && this.state.specialists.length > 0) {
             for (let w = 1; w <= (this.state.maxWeek || 1); w++) {
@@ -99,7 +124,89 @@ const App = {
         }
     },
 
+    syncSemesterState(semNum) {
+        if (!semNum) semNum = this.state.currentSemester || 1;
+        this.state.currentSemester = semNum;
+
+        if (!this.state.semesters) this.state.semesters = {};
+        if (!this.state.semesters[1]) {
+            this.state.semesters[1] = {
+                history: this.state.history || {},
+                maxWeek: this.state.maxWeek || 1,
+                currentWeek: this.state.currentWeek || 1,
+                weekAnchor: this.state.config?.weekAnchor || null,
+                annualTargets: this.state.config?.annualTargets || {}
+            };
+        }
+        if (!this.state.semesters[2]) {
+            this.state.semesters[2] = {
+                history: {},
+                maxWeek: 1,
+                currentWeek: 1,
+                weekAnchor: null,
+                annualTargets: {}
+            };
+        }
+
+        const activeSem = this.state.semesters[semNum];
+        this.state.history = activeSem.history || {};
+        this.state.maxWeek = activeSem.maxWeek || 1;
+        this.state.currentWeek = activeSem.currentWeek || 1;
+        if (!this.state.config) this.state.config = {};
+        this.state.config.weekAnchor = activeSem.weekAnchor || null;
+        this.state.config.annualTargets = activeSem.annualTargets || {};
+    },
+
+    saveSemesterStatePointers() {
+        const sem = this.state.currentSemester || 1;
+        if (!this.state.semesters) this.state.semesters = {};
+        this.state.semesters[sem] = {
+            history: this.state.history || {},
+            maxWeek: this.state.maxWeek || 1,
+            currentWeek: this.state.currentWeek || 1,
+            weekAnchor: this.state.config?.weekAnchor || null,
+            annualTargets: this.state.config?.annualTargets || {}
+        };
+    },
+
+    getMondayOfWeek(dateStr) {
+        if (!dateStr) return null;
+        const d = new Date(dateStr + 'T00:00:00');
+        if (isNaN(d.getTime())) return null;
+        const day = d.getDay(); // 0(일) ~ 6(토)
+        const diff = day === 0 ? -6 : 1 - day;
+        d.setDate(d.getDate() + diff);
+        return d.toISOString().slice(0, 10);
+    },
+
+    switchSemester(semNum, startDate) {
+        semNum = parseInt(semNum) || 1;
+        this.saveSemesterStatePointers();
+        this.syncSemesterState(semNum);
+
+        if (startDate) {
+            const monStr = this.getMondayOfWeek(startDate);
+            if (monStr) {
+                this.state.config.weekAnchor = { week: 1, startDate: monStr };
+                this.state.semesters[semNum].weekAnchor = { week: 1, startDate: monStr };
+            }
+        }
+
+        // 학기 데이터 초기화 확인
+        if (Object.keys(this.state.history).length === 0) {
+            this.state.currentWeek = 1;
+            this.state.maxWeek = 1;
+            this.initWeekData(1);
+        }
+
+        this.saveData();
+        this.renderTimetableLayout();
+        this.updateWeekDateDisplay();
+        this.calculateAndRenderValidationView();
+    },
+
     saveData() {
+        this.saveSemesterStatePointers();
         localStorage.setItem('school-planner-v4', JSON.stringify(this.state));
     },
 
@@ -1328,7 +1435,9 @@ const App = {
             mode = activeNav?.id === 'btn-timetable-all' ? 'all' : 'single';
         }
         this._timetableMode = mode;
-        this.dom.weekLabel.textContent = `${this.state.currentWeek}주차 시간표`;
+        if (this.dom.weekLabel) {
+            this.dom.weekLabel.innerHTML = `<span class="semester-badge">${this.state.currentSemester || 1}학기</span> ${this.state.currentWeek}주차 시간표`;
+        }
         this.updateWeekDateDisplay();
         const tgts = this.state.history[this.state.currentWeek].targets, subs = this.state.config.subjects;
         let th = `<div class="target-table-wrapper"><table class="target-table"><thead><tr><th>목표 차시</th>`;
@@ -1528,6 +1637,12 @@ const App = {
         }
         if (this.dom.menus.validation.classList.contains('hide')) return;
 
+        const curSem = this.state.currentSemester || 1;
+        const titleEl = document.getElementById('val-dashboard-title');
+        if (titleEl) {
+            titleEl.innerHTML = `<span class="semester-badge">${curSem}학기</span> 시수 확인 대시보드`;
+        }
+
         const subs = this.state.config.subjects;
         const history = this.state.history;
         const annT = this.state.config.annualTargets || {};
@@ -1551,7 +1666,7 @@ const App = {
             h += `<th class="text-center" style="background:var(--primary-light); color:var(--primary-dark);">합계</th></tr></thead><tbody>`;
             
             // Row 1: 기준시수 (Target)
-            h += `<tr><td class="col-head" style="text-align:center; font-weight:700;">기준시수</td>`;
+            h += `<tr><td class="col-head" style="text-align:center; font-weight:700;">${curSem}학기 기준시수</td>`;
             let sumTarget = 0;
             subs.forEach(s => {
                 const target = annT[s.name] || 0;
@@ -1562,7 +1677,7 @@ const App = {
             h += `<td class="text-center font-bold" style="background:#f8fafc;">${sumTarget}</td></tr>`;
 
             // Row 2: 누적시수 (주차별 목표 차시 합산)
-            h += `<tr><td class="col-head" style="text-align:center; font-weight:700;">누적시수</td>`;
+            h += `<tr><td class="col-head" style="text-align:center; font-weight:700;">${curSem}학기 누적시수</td>`;
             let sumActual = 0;
             subs.forEach(s => {
                 const actual = totalCounts[s.name] || 0;
@@ -2360,7 +2475,56 @@ const App = {
         this.days.forEach(d => this.dom.periodInputs[d].value = this.state.config.periods[d]);
         this.dom.subjectList.innerHTML = '';
         this.state.config.subjects.forEach((s, idx) => this.addSubjectConfigItem(s.name, idx, s.preferredSlot || 0));
+
+        this._selectedSemInSettings = this.state.currentSemester || 1;
+        this.updateSemesterSettingsUI();
     },
+
+    selectSemesterInSettings(semNum) {
+        this._selectedSemInSettings = parseInt(semNum) || 1;
+        this.updateSemesterSettingsUI();
+    },
+
+    updateSemesterSettingsUI() {
+        const sem1Btn = document.getElementById('btn-sem-1');
+        const sem2Btn = document.getElementById('btn-sem-2');
+        if (sem1Btn && sem2Btn) {
+            sem1Btn.classList.toggle('active', this._selectedSemInSettings === 1);
+            sem2Btn.classList.toggle('active', this._selectedSemInSettings === 2);
+        }
+        const label = document.getElementById('sem-start-label');
+        if (label) {
+            label.textContent = `${this._selectedSemInSettings}학기 개학일 선택 (해당 주 전체가 1주차가 됩니다)`;
+        }
+        const input = document.getElementById('input-sem-start-date');
+        if (input) {
+            const semAnchor = this.state.semesters?.[this._selectedSemInSettings]?.weekAnchor || (this._selectedSemInSettings === this.state.currentSemester ? this.state.config?.weekAnchor : null);
+            input.value = semAnchor?.startDate || '';
+            this.previewSemStartDate();
+        }
+    },
+
+    previewSemStartDate() {
+        const input = document.getElementById('input-sem-start-date');
+        const preview = document.getElementById('sem-start-date-preview');
+        if (!input || !preview) return;
+        if (!input.value) {
+            preview.textContent = '';
+            return;
+        }
+        const monStr = this.getMondayOfWeek(input.value);
+        if (!monStr) {
+            preview.textContent = '';
+            return;
+        }
+        const d = new Date(monStr + 'T00:00:00');
+        const fri = new Date(d); fri.setDate(d.getDate() + 4);
+        const fmtD = dt => `${dt.getMonth()+1}월 ${dt.getDate()}일`;
+        const sem = this._selectedSemInSettings || this.state.currentSemester || 1;
+        preview.textContent = `${sem}학기 1주차 범위: ${fmtD(d)}(월) ~ ${fmtD(fri)}(금)`;
+        preview.style.color = '#3b82f6';
+    },
+
     addSubjectConfigItem(name='', idx=0, preferredSlot=0) {
         const row = document.createElement('div');
         row.className = 'subject-row';
@@ -2422,11 +2586,6 @@ const App = {
             this.days.forEach(d => {
                 if (p < this.state.config.periods[d]) {
                     const sub = (cd[d] && cd[d][p]) || '';
-                    const customBg = bgColors[d]?.[p] ?? null;
-                    const isSpCell = !!(spCells[d]?.[p]);
-                    const sp = isSpCell ? this._spForCell(c, d, p) : null;
-                    const bg = customBg || (sp && sp.bg) || null;
-                    const bgAttr = bg ? ` bgcolor="${bg}"` : '';
                     const bgStyle = bg ? `background:${bg};` : '';
                     t += `<td${bgAttr} style="${tdS}${bgStyle}">${sub}</td>`;
                 } else {

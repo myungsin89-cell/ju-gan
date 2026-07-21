@@ -130,6 +130,28 @@
 
                     </div>
 
+                    <!-- 학기 및 개학일 설정 -->
+                    <div class="settings-col-card" style="margin-top:16px;">
+                        <div>
+                            <h3 class="settings-section-title">학기 및 개학일 설정</h3>
+                            <p class="settings-section-desc">현재 운영할 학기를 선택하고, 개학일을 지정하면 해당 주부터 1주차가 시작됩니다.</p>
+                        </div>
+                        <div class="settings-field-row" style="align-items:flex-start; gap:20px; flex-wrap:wrap; margin-top:12px;">
+                            <div class="settings-field" style="flex:0 0 200px;">
+                                <label class="settings-label">현재 학기 선택</label>
+                                <div style="display:flex; gap:8px; margin-top:4px;">
+                                    <button type="button" id="btn-sem-1" class="sem-btn active" onclick="App.selectSemesterInSettings(1)">1학기</button>
+                                    <button type="button" id="btn-sem-2" class="sem-btn" onclick="App.selectSemesterInSettings(2)">2학기</button>
+                                </div>
+                            </div>
+                            <div class="settings-field" style="flex:1; min-width:240px;">
+                                <label class="settings-label" id="sem-start-label">개학일 선택 (해당 주 전체가 1주차가 됩니다)</label>
+                                <input type="date" id="input-sem-start-date" class="settings-num-input" style="width:100%; text-align:left; padding:10px 14px; font-size:0.95rem; border:1.5px solid var(--border-color); border-radius:10px; background:#f8fafc;" oninput="App.previewSemStartDate()">
+                                <p id="sem-start-date-preview" style="font-size:0.82rem; color:#3b82f6; font-weight:600; margin-top:6px; min-height:1.2em;"></p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 관리자 비번 변경 -->
                     <div class="settings-col-card" style="margin-top:16px;">
                         <div>
@@ -166,7 +188,7 @@
                 <!-- Annual Summary Card -->
                 <div class="card">
                     <div class="section-header">
-                        <h2>전체 시수 확인 대시보드</h2>
+                        <h2 id="val-dashboard-title">전체 시수 확인 대시보드</h2>
                         <div class="header-actions">
                             <span class="status-badge" id="val-update-status">실시간 업데이트 중</span>
                         </div>

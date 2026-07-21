@@ -68,13 +68,18 @@ const FirebaseDB = {
         if (!roomSnap.exists) return null;
 
         const roomData = roomSnap.data();
-        const history = {};
+        const currentSemester = roomData.currentSemester || 1;
+        const semestersConfig = roomData.semestersConfig || {};
 
-        const weeksSnap = await rRef.collection('weeks').get();
-        await Promise.all(weeksSnap.docs.map(async weekDoc => {
+        const historySem1 = {};
+        const historySem2 = {};
+
+        // Load 1학기 (weeks)
+        const weeksSnap1 = await rRef.collection('weeks').get();
+        await Promise.all(weeksSnap1.docs.map(async weekDoc => {
             const w = parseInt(weekDoc.id);
             const wData = weekDoc.data();
-            history[w] = {
+            historySem1[w] = {
                 targets: wData.targets || {},
                 specialistTargets: wData.specialistTargets || {},
                 specialistMemo: wData.specialistMemo || '',
@@ -87,20 +92,81 @@ const FirebaseDB = {
             const classesSnap = await rRef.collection('weeks').doc(weekDoc.id).collection('classes').get();
             classesSnap.docs.forEach(classDoc => {
                 const cd = classDoc.data();
-                history[w].classes[classDoc.id] = cd.timetable || {};
-                history[w].bgColors[classDoc.id] = cd.bgColors || {};
+                historySem1[w].classes[classDoc.id] = cd.timetable || {};
+                historySem1[w].bgColors[classDoc.id] = cd.bgColors || {};
             });
         }));
+
+        // Load 2학기 (sem2_weeks)
+        const weeksSnap2 = await rRef.collection('sem2_weeks').get();
+        await Promise.all(weeksSnap2.docs.map(async weekDoc => {
+            const w = parseInt(weekDoc.id);
+            const wData = weekDoc.data();
+            historySem2[w] = {
+                targets: wData.targets || {},
+                specialistTargets: wData.specialistTargets || {},
+                specialistMemo: wData.specialistMemo || '',
+                weeklyMemo: wData.weeklyMemo || '',
+                specialistCells: wData.specialistCells || {},
+                specialists: wData.specialists || [],
+                classes: {},
+                bgColors: {}
+            };
+            const classesSnap = await rRef.collection('sem2_weeks').doc(weekDoc.id).collection('classes').get();
+            classesSnap.docs.forEach(classDoc => {
+                const cd = classDoc.data();
+                historySem2[w].classes[classDoc.id] = cd.timetable || {};
+                historySem2[w].bgColors[classDoc.id] = cd.bgColors || {};
+            });
+        }));
+
+        const sem1Max = Math.max(1, ...Object.keys(historySem1).map(Number));
+        const sem2Max = Math.max(1, ...Object.keys(historySem2).map(Number));
+
+        const sem1Config = semestersConfig[1] || {
+            maxWeek: roomData.maxWeek || sem1Max,
+            currentWeek: sem1Max,
+            weekAnchor: roomData.config?.weekAnchor || null,
+            annualTargets: roomData.config?.annualTargets || {}
+        };
+        const sem2Config = semestersConfig[2] || {
+            maxWeek: sem2Max,
+            currentWeek: 1,
+            weekAnchor: roomData.sem2WeekAnchor || null,
+            annualTargets: roomData.sem2AnnualTargets || {}
+        };
+
+        const semesters = {
+            1: {
+                history: historySem1,
+                maxWeek: sem1Config.maxWeek || sem1Max,
+                currentWeek: sem1Config.currentWeek || sem1Max,
+                weekAnchor: sem1Config.weekAnchor || null,
+                annualTargets: sem1Config.annualTargets || {}
+            },
+            2: {
+                history: historySem2,
+                maxWeek: sem2Config.maxWeek || sem2Max,
+                currentWeek: sem2Config.currentWeek || 1,
+                weekAnchor: sem2Config.weekAnchor || null,
+                annualTargets: sem2Config.annualTargets || {}
+            }
+        };
+
+        const activeSem = semesters[currentSemester] || semesters[1];
 
         return {
             config: roomData.config || null,
             classSettings: roomData.classSettings || {},
             specialists: roomData.specialists || [],
             referenceBoards: roomData.referenceBoards || [],
-            maxWeek: roomData.maxWeek || 1,
+            currentSemester,
+            semesters,
+            maxWeek: activeSem.maxWeek || 1,
+            currentWeek: activeSem.currentWeek || 1,
+            history: activeSem.history || {},
             lastSavedBy: roomData.lastSavedBy || '',
-            lastSavedAt: roomData.lastSavedAt || null,
-            history
+            lastSavedAt: roomData.lastSavedAt || null
         };
     },
 
@@ -112,6 +178,23 @@ const FirebaseDB = {
     // ── 관리자 저장: config + specialists + 전체 주차 + 전체 반 ──
     async saveAdmin(roomCode, state) {
         const rRef = this.roomRef(roomCode);
+        const curSem = state.currentSemester || 1;
+
+        // 학기 설정 메타데이터 정리
+        const semestersConfig = {
+            1: {
+                maxWeek: state.semesters?.[1]?.maxWeek || (curSem === 1 ? state.maxWeek : 1),
+                currentWeek: state.semesters?.[1]?.currentWeek || (curSem === 1 ? state.currentWeek : 1),
+                weekAnchor: state.semesters?.[1]?.weekAnchor || (curSem === 1 ? state.config?.weekAnchor : null),
+                annualTargets: state.semesters?.[1]?.annualTargets || {}
+            },
+            2: {
+                maxWeek: state.semesters?.[2]?.maxWeek || (curSem === 2 ? state.maxWeek : 1),
+                currentWeek: state.semesters?.[2]?.currentWeek || (curSem === 2 ? state.currentWeek : 1),
+                weekAnchor: state.semesters?.[2]?.weekAnchor || (curSem === 2 ? state.config?.weekAnchor : null),
+                annualTargets: state.semesters?.[2]?.annualTargets || {}
+            }
+        };
 
         await rRef.set({
             ...this._clean({
@@ -119,17 +202,20 @@ const FirebaseDB = {
                 classSettings: state.classSettings || {},
                 specialists: state.specialists || [],
                 referenceBoards: state.referenceBoards || [],
+                currentSemester: curSem,
+                semestersConfig,
                 maxWeek: state.maxWeek,
                 lastSavedBy: state.userProfile?.name || '관리자',
             }),
             lastSavedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        const collectionName = curSem === 2 ? 'sem2_weeks' : 'weeks';
         const saves = [];
         for (let w = 1; w <= state.maxWeek; w++) {
             const wData = state.history[w];
             if (!wData) continue;
-            const wRef = rRef.collection('weeks').doc(String(w));
+            const wRef = rRef.collection(collectionName).doc(String(w));
 
             saves.push(wRef.set(this._clean({
                 targets: wData.targets || {},
@@ -143,7 +229,7 @@ const FirebaseDB = {
             const classes = wData.classes || {};
             for (const [classNum, classData] of Object.entries(classes)) {
                 saves.push(
-                    wRef.collection('classes').doc(String(classNum)).set(this._clean({
+                    wRef.collection(collectionName).doc(String(w)).collection('classes').doc(String(classNum)).set(this._clean({
                         timetable: classData || {},
                         bgColors: (wData.bgColors || {})[classNum] || {}
                     }))
@@ -156,13 +242,15 @@ const FirebaseDB = {
     // ── 일반 선생님 저장: 자기 반 데이터만 ──
     async saveClass(roomCode, classNum, state) {
         const rRef = this.roomRef(roomCode);
+        const curSem = state.currentSemester || 1;
+        const collectionName = curSem === 2 ? 'sem2_weeks' : 'weeks';
         const saves = [];
 
         for (let w = 1; w <= state.maxWeek; w++) {
             const wData = state.history[w];
             if (!wData) continue;
             saves.push(
-                rRef.collection('weeks').doc(String(w))
+                rRef.collection(collectionName).doc(String(w))
                     .collection('classes').doc(String(classNum))
                     .set(this._clean({
                         timetable: (wData.classes || {})[classNum] || {},
