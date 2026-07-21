@@ -230,14 +230,27 @@ const App = {
 
     initWeekData(week) {
         if (!this.state.history[week]) {
-            const targets = {};
-            this.state.config.subjects.forEach(s => targets[s.name] = 0);
-            const classes = {};
-            for (let cNum = 1; cNum <= this.state.config.classCount; cNum++) {
-                classes[cNum] = { "월":[], "화":[], "수":[], "목":[], "금":[] };
-            }
-            this.state.history[week] = { targets, classes, bgColors: {}, specialistTargets: {}, specialistMemo: '', weeklyMemo: '', specialistCells: {}, specialists: [] };
+            this.state.history[week] = {};
         }
+        const wData = this.state.history[week];
+        if (!wData.targets) {
+            wData.targets = {};
+            (this.state.config?.subjects || []).forEach(s => wData.targets[s.name] = 0);
+        }
+        if (!wData.classes) wData.classes = {};
+        const classCount = this.state.config?.classCount || 4;
+        for (let cNum = 1; cNum <= classCount; cNum++) {
+            if (!wData.classes[cNum]) wData.classes[cNum] = {};
+            this.days.forEach(d => {
+                if (!Array.isArray(wData.classes[cNum][d])) {
+                    wData.classes[cNum][d] = [];
+                }
+            });
+        }
+        if (!wData.bgColors) wData.bgColors = {};
+        if (!wData.specialistTargets) wData.specialistTargets = {};
+        if (!wData.specialistCells) wData.specialistCells = {};
+        if (!wData.specialists) wData.specialists = [];
     },
 
     isClassInSpecialist(sp, cNum, week) {
@@ -1095,6 +1108,7 @@ const App = {
                 this.showToast(`✅ ${classNum}반 시간표를 저장했습니다.`);
             }
             this.state.isDirty = false;
+            this.saveData();
             const allSaveBtns = document.querySelectorAll('.btn-save-class');
             allSaveBtns.forEach(b => { b.textContent = '저장'; b.style.background = ''; b.style.borderColor = ''; });
         } catch (e) {
@@ -1118,6 +1132,7 @@ const App = {
                 await FirebaseDB.saveClass(this.state.roomCode, classNum, this.state);
                 this.showToast(`✅ ${classNum}반 시간표를 서버에 저장했습니다.`);
             }
+            this.saveData();
         } catch (e) {
             this.showToast('❌ 저장 실패: ' + e.message);
         } finally {
@@ -1168,8 +1183,10 @@ const App = {
                     }
                 }
             }
-            // 항상 최신 주차로 이동
-            this.state.currentWeek = this.state.maxWeek;
+            // 유효한 currentWeek가 없거나 범위를 벗어난 경우에만 maxWeek로 설정
+            if (!this.state.currentWeek || this.state.currentWeek < 1 || this.state.currentWeek > this.state.maxWeek) {
+                this.state.currentWeek = this.state.maxWeek || 1;
+            }
             this.saveData();
             this.renderTimetableLayout();
             this.calculateAndRenderValidationView?.();
@@ -1574,8 +1591,11 @@ const App = {
     getTimetableGridHtml(c) {
         const wData = this.state.history[this.state.currentWeek];
         if (!wData.classes[c]) {
-            wData.classes[c] = { "월":[], "화":[], "수":[], "목":[], "금":[] };
+            wData.classes[c] = {};
         }
+        this.days.forEach(d => {
+            if (!Array.isArray(wData.classes[c][d])) wData.classes[c][d] = [];
+        });
         const data = wData.classes[c], maxP = Math.max(...Object.values(this.state.config.periods));
         const spCells = wData.specialistCells || {};
         let h = `<thead><tr><th width="40">교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
@@ -1583,7 +1603,7 @@ const App = {
             h += `<tr><td class="col-head">${p+1}</td>`;
             this.days.forEach(d => {
                 if (p < this.state.config.periods[d]) {
-                    const val = data[d][p] || '';
+                    const val = (data[d] && data[d][p]) ? data[d][p] : '';
                     const isSpLocked = !!(spCells[c]?.[d]?.[p]);
                     let s = '';
                     const customBg = wData.bgColors?.[c]?.[d]?.[p] ?? null;

@@ -253,8 +253,8 @@ const FirebaseDB = {
                 rRef.collection(collectionName).doc(String(w))
                     .collection('classes').doc(String(classNum))
                     .set(this._clean({
-                        timetable: (wData.classes || {})[classNum] || {},
-                        bgColors: ((wData.bgColors || {})[classNum]) || {}
+                        timetable: (wData.classes || {})[classNum] || (wData.classes || {})[String(classNum)] || {},
+                        bgColors: ((wData.bgColors || {})[classNum]) || ((wData.bgColors || {})[String(classNum)]) || {}
                     }))
             );
         }
