@@ -249,9 +249,13 @@ const FirebaseDB = {
         for (let w = 1; w <= state.maxWeek; w++) {
             const wData = state.history[w];
             if (!wData) continue;
+            const wRef = rRef.collection(collectionName).doc(String(w));
+            
+            // 🔥 주차(week) 부모 문서가 없으면(유령 문서) load() 쿼리에서 무시되므로 명시적으로 빈 데이터를 병합 저장
+            saves.push(wRef.set({ _exists: true }, { merge: true }));
+
             saves.push(
-                rRef.collection(collectionName).doc(String(w))
-                    .collection('classes').doc(String(classNum))
+                wRef.collection('classes').doc(String(classNum))
                     .set(this._clean({
                         timetable: (wData.classes || {})[classNum] || (wData.classes || {})[String(classNum)] || {},
                         bgColors: ((wData.bgColors || {})[classNum]) || ((wData.bgColors || {})[String(classNum)]) || {}
