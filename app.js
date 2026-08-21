@@ -2607,6 +2607,11 @@ const App = {
             this.days.forEach(d => {
                 if (p < this.state.config.periods[d]) {
                     const sub = (cd[d] && cd[d][p]) || '';
+                    const customBg = bgColors[d]?.[p] ?? null;
+                    const isSpCell = !!(spCells[d]?.[p]);
+                    const sp = isSpCell ? this._spForCell(c, d, p) : null;
+                    const bg = customBg || (sp && sp.bg) || null;
+                    const bgAttr = bg ? ` bgcolor="${bg}"` : '';
                     const bgStyle = bg ? `background:${bg};` : '';
                     t += `<td${bgAttr} style="${tdS}${bgStyle}">${sub}</td>`;
                 } else {
