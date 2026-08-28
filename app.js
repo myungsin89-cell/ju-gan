@@ -2960,7 +2960,7 @@ const App = {
         let h = `<table class="${p}-single-table">
             <thead>
                 <tr>
-                    <th style="width:44px; background:#475569; color:#fff; font-size:11.5px; font-weight:700;">교시</th>
+                    <th style="width:44px; background:#f1f5f9; color:#1e293b; font-size:11.5px; font-weight:800; border:1px solid #cbd5e1;">교시</th>
                     ${this.days.map(d => `<th class="${p}-day-th">${d}</th>`).join('')}
                 </tr>
             </thead><tbody>`;
@@ -3050,7 +3050,7 @@ const App = {
             const matchingSps = this._sp(week).filter(sp => (sp.subject || sp.name) && !(sp.hiddenWeeks || []).includes(week) && this.isClassInSpecialist(sp, cNum, week));
             
             if (matchingSps.length > 0) {
-                page1 += `<div style="font-size:12.5px; font-weight:700; color:#334155; margin:16px 0 8px 0; padding-left:6px; border-left:3px solid #64748b; letter-spacing:0.3px;">우리 반 배정 전담 시간표</div>`;
+                page1 += `<div style="font-size:12.5px; font-weight:800; color:#1e293b; margin:16px 0 10px 0; padding:6px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid #3b82f6; border-radius:4px; letter-spacing:0.3px;">우리 반 배정 전담 시간표</div>`;
                 const cols = matchingSps.length === 1 ? 1 : (matchingSps.length === 2 ? 2 : 3);
                 page1 += `<div class="${p}-grid ${p}-grid-${cols}" style="gap:10px;">`;
                 matchingSps.forEach(sp => {
@@ -3511,7 +3511,7 @@ const App = {
             * { box-sizing: border-box; }
             body { margin:0; padding:0; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; background:#fff; font-size:10.5px; }
             @page { size:A4 portrait; margin:14mm 12mm; }
-            .pt-doc-title { text-align:center; font-size:1.25rem; font-weight:800; padding:10px 16px; margin-bottom:16px; border-bottom:2px solid #cbd5e1; letter-spacing:1px; color:#334155; }
+            .pt-doc-title { text-align:center; font-size:1.25rem; font-weight:800; padding:10px 18px; margin-bottom:16px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:8px; letter-spacing:0.5px; color:#1e293b; }
             .pt-grid { display:grid; gap:10px; align-items:stretch; }
             .pt-grid-1 { grid-template-columns:1fr; }
             .pt-grid-2 { grid-template-columns:repeat(2,1fr); }
@@ -3520,8 +3520,8 @@ const App = {
             .pt-table { width:100%; height:100%; border-collapse:collapse; table-layout:fixed; font-size:10.5px; text-align:center; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; font-weight:500; letter-spacing:-0.2px; border:1px solid #cbd5e1; page-break-inside:avoid; }
             .pt-col-pd { width:36px; }
             .pt-table th, .pt-table td { border:1px solid #cbd5e1; padding:6px 1px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:11px; letter-spacing:-0.8px; }
-            .pt-class-th { background:#475569 !important; color:#fff; font-size:12px; font-weight:800; padding:8px 4px; letter-spacing:0.5px; white-space:nowrap; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            .pt-day-th { background:#f8fafc !important; font-weight:700; font-size:10.5px; color:#334155; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-class-th { background:#f1f5f9 !important; color:#0f172a !important; font-size:12px; font-weight:900; padding:8px 4px; letter-spacing:0.5px; white-space:nowrap; border:1px solid #cbd5e1; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-day-th { background:#f8fafc !important; font-weight:700; font-size:10.5px; color:#334155; border:1px solid #cbd5e1; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-pd-td { background:#f8fafc; font-weight:700; color:#64748b; font-size:9.5px; }
             .pt-disabled-td { background:#f1f5f9; }
             .pt-sp-name-th { font-size:9.5px; font-weight:800; padding:3px 6px; text-align:center; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -3530,9 +3530,9 @@ const App = {
             .pt-page-break { page-break-before:always; }
             .pt-page-pdf { width:100%; display:flex; justify-content:center; }
             
-            .pt-single-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:12px; text-align:center; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; font-weight:600; border:1.5px solid #94a3b8; margin-bottom:14px; }
+            .pt-single-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:12px; text-align:center; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; font-weight:600; border:1.5px solid #cbd5e1; margin-bottom:14px; }
             .pt-single-table th, .pt-single-table td { border:1px solid #cbd5e1; padding:8px 4px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-            .pt-single-table th.pt-day-th { background:#475569 !important; color:#ffffff !important; font-size:12px; font-weight:700; padding:8px 4px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-single-table th.pt-day-th { background:#f1f5f9 !important; color:#1e293b !important; font-size:12px; font-weight:800; padding:8px 4px; border:1px solid #cbd5e1; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-single-table td.pt-pd-td { background:#f8fafc; font-weight:700; color:#64748b; font-size:11px; width:44px; }
         `;
 
