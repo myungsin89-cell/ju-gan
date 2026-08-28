@@ -319,10 +319,10 @@
                         <button id="btn-clear-all" class="btn-secondary btn-sm" style="color:#ef4444;">전체 시간표 삭제</button>
                     </div>
                     <div class="global-actions">
-                        <button id="btn-weekly-memo" class="btn-secondary btn-sm">📝 전달사항 입력</button>
+                        <button id="btn-weekly-memo" class="btn-secondary btn-sm">전달사항 입력</button>
                         <button id="btn-import-all" class="btn-secondary btn-sm">전담 전체 가져오기</button>
                         <button id="btn-random-all" class="btn-primary-small">전체 랜덤 배정</button>
-                        <button id="btn-print-guide" class="btn-primary-small ml-4" style="background-color: #3b82f6;">📄 주간학습안내</button>
+                        <button id="btn-print-guide" class="btn-primary-small ml-4" style="background-color: #3b82f6;">주간학습안내</button>
                     </div>
                 </div>
 
@@ -527,19 +527,34 @@
     <!-- 🖨️ Print Area -->
     <div id="print-area" class="print-only"></div>
 
-    <!-- 📄 주간학습안내 미리보기 오버레이 -->
+    <!-- 주간학습안내 미리보기 오버레이 -->
     <div id="print-preview-overlay" class="hide">
         <div class="ppo-header">
-            <div class="ppo-title">📄 주간학습안내 미리보기</div>
+            <div class="ppo-header-left">
+                <div class="ppo-title">주간학습안내 미리보기</div>
+                <div id="ppo-attached-pdf-info" class="ppo-attached-pdf-info hide">
+                    <span class="ppo-pdf-badge"><span id="ppo-pdf-filename">원본.pdf</span></span>
+                    <button id="btn-ppo-remove-pdf" class="ppo-remove-pdf-btn" title="첨부된 PDF 제거">✕</button>
+                </div>
+            </div>
             <div class="ppo-header-actions">
-                <button id="btn-ppo-check" class="btn-primary-small" style="background:#059669;">✅ 최종 점검</button>
-                <button id="btn-ppo-print" class="btn-primary-small" style="background:#475569;">🖨️ 인쇄</button>
-                <button id="btn-ppo-download" class="btn-primary-small" style="background:#3b82f6;">⬇ PDF 다운로드</button>
-                <button id="btn-ppo-close" class="ppo-close-btn">✕</button>
+                <div class="ppo-select-wrap">
+                    <label for="ppo-target-class" class="text-xs text-slate-300 mr-1">출력 대상:</label>
+                    <select id="ppo-target-class" class="ppo-class-select">
+                        <option value="all">전체 학급</option>
+                    </select>
+                </div>
+                <input type="file" id="input-ppo-pdf-upload" accept="application/pdf" style="display:none;">
+                <button id="btn-ppo-upload-pdf" class="btn-primary-small" style="background:#8b5cf6;">원본 PDF 첨부</button>
+                <button id="btn-ppo-download-zip" class="btn-primary-small" style="background:#0284c7;">전체 이미지(ZIP)</button>
+                <button id="btn-ppo-check" class="btn-primary-small" style="background:#059669;">최종 점검</button>
+                <button id="btn-ppo-print" class="btn-primary-small" style="background:#475569;">인쇄</button>
+                <button id="btn-ppo-download" class="btn-primary-small" style="background:#3b82f6;">통합 PDF 다운로드</button>
+                <button id="btn-ppo-close" class="ppo-close-btn" title="닫기">✕</button>
             </div>
         </div>
         <div class="ppo-body">
-            <!-- JS가 .ppo-page 요소를 직접 생성 -->
+            <!-- JS가 .ppo-page-card 요소를 직접 생성 -->
         </div>
     </div>
 
@@ -552,6 +567,8 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"></script>

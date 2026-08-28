@@ -34,8 +34,12 @@ const App = {
     },
 
     days: ["월", "화", "수", "목", "금"],
+    attachedPdf: null,
 
     init() {
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
         FirebaseDB.init();
         this.loadData();
         this.cacheDOM();
@@ -599,6 +603,16 @@ const App = {
         document.getElementById('btn-ppo-check').addEventListener('click', () => this.runFinalCheck());
         document.getElementById('btn-ppo-print').addEventListener('click', () => this.printPDF());
         document.getElementById('btn-ppo-download').addEventListener('click', () => this.downloadPDF());
+        document.getElementById('btn-ppo-download-zip')?.addEventListener('click', () => this.downloadAllImagesZip());
+        
+        const btnUploadPdf = document.getElementById('btn-ppo-upload-pdf');
+        const inputUploadPdf = document.getElementById('input-ppo-pdf-upload');
+        if (btnUploadPdf && inputUploadPdf) {
+            btnUploadPdf.addEventListener('click', () => inputUploadPdf.click());
+            inputUploadPdf.addEventListener('change', (e) => this.handlePdfUpload(e));
+        }
+        document.getElementById('btn-ppo-remove-pdf')?.addEventListener('click', () => this.removeAttachedPdf());
+
         document.getElementById('btn-clear-all').addEventListener('click', () => this.clearAllClasses());
 
         document.getElementById('btn-add-subject').addEventListener('click', () => { const count = this.dom.subjectList.querySelectorAll('.subject-row').length; this.addSubjectConfigItem('', count); });
@@ -2933,27 +2947,133 @@ const App = {
         return h + `</tbody></table>`;
     },
 
-    /* 공통 HTML 빌드 (preview용 ppo / 인쇄용 pt 클래스 전환) */
-    _buildFullPrintHtml(cls) {
-        const gradeText = this.state.config.grade ? `${this.state.config.grade}학년 ` : '';
-        const cc = this.state.config.classCount;
-        const gridCols = 3; // 항상 최대 3열
+    /* 단독 반 시간표 테이블 HTML (A4 1장에 맞춰 크고 명확하게) */
+    _buildSingleClassDetailedTableHtml(c, cls) {
+        const wData = this.state.history[this.state.currentWeek];
+        const cd = wData.classes[c] || {};
+        const bgColors = wData.bgColors?.[c] || {};
+        const spCells = wData.specialistCells?.[String(c)] || {};
+        const maxP = Math.max(...Object.values(this.state.config.periods));
         const p = cls;
 
-        /* 1페이지: 반별 시간표 */
+        let h = `<table class="${p}-single-table">
+            <thead>
+                <tr>
+                    <th style="width:44px; background:#1e293b; color:#fff; font-size:11.5px; font-weight:800;">교시</th>
+                    ${this.days.map(d => `<th class="${p}-day-th">${d}</th>`).join('')}
+                </tr>
+            </thead><tbody>`;
+        for (let row = 0; row < maxP; row++) {
+            h += `<tr><td class="${p}-pd-td">${row + 1}</td>`;
+            this.days.forEach(d => {
+                if (row < this.state.config.periods[d]) {
+                    const sub = (cd[d] && cd[d][row]) || '';
+                    const customBg = bgColors[d]?.[row] ?? null;
+                    const isSpCell = !!(spCells[d]?.[row]);
+                    const sp = isSpCell ? this._spForCell(c, d, row) : null;
+                    const bg = customBg || (sp && sp.bg) || null;
+                    const style = bg ? ` style="background-color:${bg};-webkit-print-color-adjust:exact;print-color-adjust:exact;"` : '';
+                    h += `<td${style}>${sub}</td>`;
+                } else {
+                    h += `<td style="background:#f1f5f9;"></td>`;
+                }
+            });
+            h += `</tr>`;
+        }
+        h += `</tbody></table>`;
+        return h;
+    },
+
+    /* 우리 반(cNum)에 배정된 전담 시간표 테이블 HTML */
+    _buildClassMatchingSpTableHtml(sp, cNum, cls) {
+        const p = cls;
+        const cStr = String(cNum);
+        const maxP = Math.max(...Object.values(this.state.config.periods));
+        const bg = sp.bg || '#f1f5f9';
+        const hex = bg.replace('#', '');
+        const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+        const luminance = (0.299*r + 0.587*g + 0.114*b) / 255;
+        const textColor = luminance > 0.5 ? '#1e293b' : '#ffffff';
+
+        let h = `<table class="${p}-table" style="height:auto; margin-bottom:10px;">
+            <colgroup><col class="${p}-col-pd">${this.days.map(() => `<col>`).join('')}</colgroup>
+            <thead>
+                <tr>
+                    <th colspan="${this.days.length + 1}" class="${p}-sp-name-th"
+                        style="background-color:${bg};color:${textColor};-webkit-print-color-adjust:exact;print-color-adjust:exact; padding:5px 8px; font-size:10.5px;">
+                        ${sp.subject || '(미설정)'}${sp.desc ? `<span class="${p}-sp-desc">${sp.desc}</span>` : ''}
+                    </th>
+                </tr>
+                <tr>
+                    <th class="${p}-sp-day-th">교시</th>
+                    ${this.days.map(d => `<th class="${p}-sp-day-th">${d}</th>`).join('')}
+                </tr>
+            </thead><tbody>`;
+        for (let row = 0; row < maxP; row++) {
+            h += `<tr><td class="${p}-pd-td">${row + 1}</td>`;
+            this.days.forEach(d => {
+                if (row < this.state.config.periods[d]) {
+                    const val = (sp.data && sp.data[d] && sp.data[d][row]) ? sp.data[d][row] : '';
+                    const classes = String(val).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                    const isMyClass = classes.includes(cStr);
+
+                    let cellStyle = '';
+                    if (isMyClass) {
+                        cellStyle = ` style="background-color:#e0f2fe; color:#0369a1; font-weight:800; border:2px solid #0284c7; -webkit-print-color-adjust:exact; print-color-adjust:exact;"`;
+                    } else if (sp.marks && sp.marks[`${d}_${row}`]) {
+                        cellStyle = ` style="background-color:${sp.marks[`${d}_${row}`]}; -webkit-print-color-adjust:exact; print-color-adjust:exact;"`;
+                    }
+                    h += `<td${cellStyle}>${val}</td>`;
+                } else {
+                    h += `<td class="${p}-disabled-td"></td>`;
+                }
+            });
+            h += `</tr>`;
+        }
+        return h + `</tbody></table>`;
+    },
+
+    /* 공통 HTML 빌드 (preview용 ppo / 인쇄용 pt 클래스 전환) */
+    _buildFullPrintHtml(cls, targetClass = 'all') {
+        const gradeText = this.state.config.grade ? `${this.state.config.grade}학년 ` : '';
+        const cc = this.state.config.classCount;
+        const p = cls;
+
+        if (targetClass && targetClass !== 'all') {
+            const cNum = parseInt(targetClass) || 1;
+            /* 해당 반 시간표와 배정 전담 시간표를 A4 1페이지에 통합 배치 */
+            let page1 = `<div class="${p}-doc-title">${gradeText}${cNum}반 주간 시간표 (${this.state.currentWeek}주차)</div>`;
+            page1 += this._buildSingleClassDetailedTableHtml(cNum, cls);
+
+            const week = this.state.currentWeek;
+            const matchingSps = this._sp(week).filter(sp => (sp.subject || sp.name) && !(sp.hiddenWeeks || []).includes(week) && this.isClassInSpecialist(sp, cNum, week));
+            
+            if (matchingSps.length > 0) {
+                page1 += `<div style="font-size:12.5px; font-weight:800; color:#1e293b; margin:16px 0 8px 0; padding-left:4px; border-left:3px solid #1e293b; letter-spacing:0.3px;">우리 반 배정 전담 시간표</div>`;
+                const cols = matchingSps.length === 1 ? 1 : (matchingSps.length === 2 ? 2 : 3);
+                page1 += `<div class="${p}-grid ${p}-grid-${cols}" style="gap:10px;">`;
+                matchingSps.forEach(sp => {
+                    page1 += this._buildClassMatchingSpTableHtml(sp, cNum, cls);
+                });
+                page1 += `</div>`;
+            }
+
+            return { page1, page2: '' };
+        }
+
+        /* 전체 학급 모드 */
+        const gridCols = 3; // 항상 최대 3열
         let page1 = `<div class="${p}-doc-title">${gradeText}${this.state.currentWeek}주차 주간학습안내</div>`;
         page1 += `<div class="${p}-grid ${p}-grid-${gridCols}">`;
         for (let c = 1; c <= cc; c++) page1 += this._buildClassTableHtml(c, cls);
         page1 += `</div>`;
 
-        /* 2페이지: 전담 시간표 (전담 보드가 있을 때만, 이번 주 숨김 제외) */
         let page2 = '';
         const sps = this._sp().filter(s => (s.subject || s.name) && !(s.hiddenWeeks || []).includes(this.state.currentWeek));
         if (sps.length > 0) {
             page2 += `<div class="${p}-doc-title" style="margin-top:0;">전담 시간표</div>`;
             page2 += `<div class="${p}-grid ${p}-grid-3">`;
             sps.forEach(sp => { page2 += this._buildSpTableHtml(sp, cls); });
-            // 빈 칸으로 채워 항상 3열×5행(15칸) 유지 → 반별시간표와 동일한 표 크기
             const emptyCount = 15 - sps.length;
             for (let i = 0; i < emptyCount; i++) {
                 page2 += `<div style="visibility:hidden;"></div>`;
@@ -2964,51 +3084,309 @@ const App = {
         return { page1, page2 };
     },
 
+    async handlePdfUpload(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+            this.showAlert('오류', 'PDF 파일만 업로드할 수 있습니다.');
+            return;
+        }
+        const btn = document.getElementById('btn-ppo-upload-pdf');
+        const origText = btn ? btn.textContent : '';
+        if (btn) { btn.textContent = '불러오는 중...'; btn.disabled = true; }
+
+        try {
+            if (!window.pdfjsLib) {
+                throw new Error('PDF.js 라이브러리가 로드되지 않았습니다.');
+            }
+            const arrayBuffer = await file.arrayBuffer();
+            const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+            const pdfDoc = await loadingTask.promise;
+            const numPages = pdfDoc.numPages;
+            const renderedPages = [];
+
+            for (let i = 1; i <= numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const standardWidth = 794;
+                const viewport = page.getViewport({ scale: 1 });
+                const scale = (standardWidth / viewport.width) * 2;
+                const scaledViewport = page.getViewport({ scale });
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = scaledViewport.width;
+                canvas.height = scaledViewport.height;
+
+                await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+                
+                renderedPages.push({
+                    pageNum: i,
+                    canvas: canvas,
+                    dataUrl: canvas.toDataURL('image/jpeg', 0.95),
+                    aspectRatio: canvas.width / canvas.height
+                });
+            }
+
+            this.attachedPdf = {
+                fileName: file.name,
+                pages: renderedPages
+            };
+
+            this.showToast(`${file.name} (${numPages}쪽) 첨부 완료`);
+            this.showPrintPreview();
+        } catch(err) {
+            console.error('PDF 읽기 오류:', err);
+            this.showAlert('오류', 'PDF 파일을 읽는 중 오류가 발생했습니다: ' + err.message);
+        } finally {
+            if (btn) { btn.textContent = origText; btn.disabled = false; }
+            e.target.value = '';
+        }
+    },
+
+    removeAttachedPdf() {
+        this.attachedPdf = null;
+        this.showToast('첨부된 PDF가 제거되었습니다.');
+        this.showPrintPreview();
+    },
+
     showPrintPreview() {
         const overlay = document.getElementById('print-preview-overlay');
-        const body = document.getElementById('ppo-content')?.parentElement;
         const ppoBody = document.querySelector('.ppo-body');
         if (!overlay || !ppoBody) return;
 
-        // 기존 페이지 초기화
         ppoBody.innerHTML = '';
 
-        const { page1, page2 } = this._buildFullPrintHtml('ppo');
+        // 학급 선택 셀렉트 박스 설정
+        const classSelect = document.getElementById('ppo-target-class');
+        if (classSelect) {
+            if (!this.ppoTargetClass) {
+                this.ppoTargetClass = this.state.isAdmin ? 'all' : (this.state.userProfile?.classNum ? String(this.state.userProfile.classNum) : 'all');
+            }
 
-        const mkPage = html => {
+            let optsHtml = '<option value="all">전체 학급</option>';
+            for (let c = 1; c <= this.state.config.classCount; c++) {
+                optsHtml += `<option value="${c}">${c}반</option>`;
+            }
+            classSelect.innerHTML = optsHtml;
+            classSelect.value = this.ppoTargetClass;
+
+            if (!classSelect.dataset.bound) {
+                classSelect.dataset.bound = '1';
+                classSelect.addEventListener('change', (e) => {
+                    this.ppoTargetClass = e.target.value;
+                    this.showPrintPreview();
+                });
+            }
+        }
+
+        // 첨부된 PDF 정보 배지 갱신
+        const pdfInfo = document.getElementById('ppo-attached-pdf-info');
+        const pdfFilename = document.getElementById('ppo-pdf-filename');
+        if (pdfInfo && pdfFilename) {
+            if (this.attachedPdf && this.attachedPdf.pages && this.attachedPdf.pages.length > 0) {
+                pdfFilename.textContent = `${this.attachedPdf.fileName} (${this.attachedPdf.pages.length}쪽)`;
+                pdfInfo.classList.remove('hide');
+            } else {
+                pdfInfo.classList.add('hide');
+            }
+        }
+
+        let globalPageNum = 1;
+
+        // 1. 업로드된 PDF 페이지들이 있으면 먼저 렌더링
+        if (this.attachedPdf && this.attachedPdf.pages) {
+            this.attachedPdf.pages.forEach((p, idx) => {
+                const pageIndex = globalPageNum;
+                const card = document.createElement('div');
+                card.className = 'ppo-page-card';
+                card.dataset.pageIndex = pageIndex;
+                card.dataset.pageType = 'pdf';
+                card.dataset.pdfPageIndex = idx;
+
+                card.innerHTML = `
+                    <div class="ppo-page-toolbar">
+                        <span>${pageIndex}페이지 (원본 주간학습 ${idx + 1}쪽)</span>
+                        <button class="btn-page-png" onclick="App.downloadSinglePageImage(${pageIndex})">${pageIndex}페이지 PNG 저장</button>
+                    </div>
+                `;
+
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'ppo-page ppo-page-pdf';
+                const img = document.createElement('img');
+                img.src = p.dataUrl;
+                img.className = 'ppo-pdf-canvas';
+                pageDiv.appendChild(img);
+
+                card.appendChild(pageDiv);
+                ppoBody.appendChild(card);
+                globalPageNum++;
+            });
+        }
+
+        // 2. 시간표 HTML 생성 (선택된 학급 대상)
+        const targetClass = this.ppoTargetClass || 'all';
+        const { page1, page2 } = this._buildFullPrintHtml('ppo', targetClass);
+
+        const isSingleClass = targetClass !== 'all';
+        const classLabel = isSingleClass ? `${targetClass}반 시간표` : '반별 시간표';
+        const spLabel = isSingleClass ? `${targetClass}반 배정 전담 시간표` : '전담 시간표';
+
+        const mkHtmlCard = (html, label) => {
+            const pageIndex = globalPageNum;
+            const card = document.createElement('div');
+            card.className = 'ppo-page-card';
+            card.dataset.pageIndex = pageIndex;
+            card.dataset.pageType = 'html';
+
+            card.innerHTML = `
+                <div class="ppo-page-toolbar">
+                    <span>${pageIndex}페이지 (${label})</span>
+                    <button class="btn-page-png" onclick="App.downloadSinglePageImage(${pageIndex})">${pageIndex}페이지 PNG 저장</button>
+                </div>
+            `;
+
             const div = document.createElement('div');
             div.className = 'ppo-page';
             div.innerHTML = html;
-            ppoBody.appendChild(div);
+            card.appendChild(div);
+            ppoBody.appendChild(card);
+            globalPageNum++;
         };
 
-        mkPage(page1);
-        if (page2) mkPage(page2);
+        mkHtmlCard(page1, classLabel);
+        if (page2) mkHtmlCard(page2, spLabel);
 
         overlay.classList.remove('hide');
+    },
+
+    async downloadSinglePageImage(targetPageIndex) {
+        const card = document.querySelector(`.ppo-page-card[data-page-index="${targetPageIndex}"]`);
+        if (!card) return;
+        const btn = card.querySelector('.btn-page-png');
+        const origText = btn ? btn.textContent : '';
+        if (btn) { btn.textContent = '저장 중...'; btn.disabled = true; }
+
+        try {
+            let dataUrl;
+            const pageType = card.dataset.pageType;
+            if (pageType === 'pdf') {
+                const pdfIdx = parseInt(card.dataset.pdfPageIndex);
+                dataUrl = this.attachedPdf.pages[pdfIdx].dataUrl;
+            } else {
+                const pageEl = card.querySelector('.ppo-page');
+                const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                dataUrl = canvas.toDataURL('image/png');
+            }
+
+            const gradeText = this.state.config.grade ? `${this.state.config.grade}학년_` : '';
+            const targetClass = this.ppoTargetClass || 'all';
+            const targetText = targetClass === 'all' ? '전체' : `${targetClass}반`;
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = `${gradeText}${this.state.currentWeek}주차_${targetText}_${targetPageIndex}페이지.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            this.showToast(`${targetPageIndex}페이지 이미지 다운로드 완료`);
+        } catch(e) {
+            console.error('이미지 저장 실패:', e);
+            this.showAlert('오류', '이미지 저장 중 오류가 발생했습니다: ' + e.message);
+        } finally {
+            if (btn) { btn.textContent = origText; btn.disabled = false; }
+        }
+    },
+
+    async downloadAllImagesZip() {
+        const cards = document.querySelectorAll('.ppo-page-card');
+        if (cards.length === 0) return;
+        const btn = document.getElementById('btn-ppo-download-zip');
+        const origText = btn ? btn.textContent : '';
+        if (btn) { btn.textContent = 'ZIP 압축 중...'; btn.disabled = true; }
+
+        try {
+            if (!window.JSZip) {
+                throw new Error('JSZip 라이브러리가 로드되지 않았습니다.');
+            }
+            const zip = new window.JSZip();
+            const gradeText = this.state.config.grade ? `${this.state.config.grade}학년_` : '';
+            const targetClass = this.ppoTargetClass || 'all';
+            const targetText = targetClass === 'all' ? '전체' : `${targetClass}반`;
+            const prefix = `${gradeText}${this.state.currentWeek}주차_${targetText}_주간학습`;
+
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
+                const pageIndex = card.dataset.pageIndex;
+                const pageType = card.dataset.pageType;
+                let base64Data;
+
+                if (pageType === 'pdf') {
+                    const pdfIdx = parseInt(card.dataset.pdfPageIndex);
+                    base64Data = this.attachedPdf.pages[pdfIdx].dataUrl.split(',')[1];
+                } else {
+                    const pageEl = card.querySelector('.ppo-page');
+                    const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                    base64Data = canvas.toDataURL('image/png').split(',')[1];
+                }
+
+                const padNum = String(pageIndex).padStart(2, '0');
+                zip.file(`${padNum}_${prefix}_${pageIndex}페이지.png`, base64Data, { base64: true });
+            }
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${prefix}_전체이미지.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            this.showToast('전체 이미지 ZIP 다운로드 완료');
+        } catch(e) {
+            console.error('ZIP 생성 실패:', e);
+            this.showAlert('오류', 'ZIP 압축 생성 중 오류가 발생했습니다: ' + e.message);
+        } finally {
+            if (btn) { btn.textContent = origText; btn.disabled = false; }
+        }
     },
 
     async downloadPDF() {
         const btn = document.getElementById('btn-ppo-download');
         const origText = btn.textContent;
-        btn.textContent = '생성 중...'; btn.disabled = true;
+        btn.textContent = 'PDF 생성 중...'; btn.disabled = true;
         try {
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const pages = document.querySelectorAll('.ppo-page');
+            const cards = document.querySelectorAll('.ppo-page-card');
             const a4W = 210, a4H = 297;
 
-            for (let i = 0; i < pages.length; i++) {
-                const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
+                const pageType = card.dataset.pageType;
+                let imgData;
+
+                if (pageType === 'pdf') {
+                    const pdfIdx = parseInt(card.dataset.pdfPageIndex);
+                    imgData = this.attachedPdf.pages[pdfIdx].dataUrl;
+                } else {
+                    const pageEl = card.querySelector('.ppo-page');
+                    const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                    imgData = canvas.toDataURL('image/jpeg', 0.95);
+                }
+
                 if (i > 0) pdf.addPage();
                 pdf.addImage(imgData, 'JPEG', 0, 0, a4W, a4H);
             }
 
             const gradeText = this.state.config.grade ? `${this.state.config.grade}학년_` : '';
-            pdf.save(`${gradeText}${this.state.currentWeek}주차_주간학습안내.pdf`);
+            const targetClass = this.ppoTargetClass || 'all';
+            const targetText = targetClass === 'all' ? '통합' : `${targetClass}반`;
+            pdf.save(`${gradeText}${this.state.currentWeek}주차_${targetText}_주간학습안내.pdf`);
+            this.showToast('통합 PDF 다운로드 완료');
         } catch(e) {
-            alert('PDF 생성 중 오류가 발생했습니다.');
+            console.error('PDF 다운로드 오류:', e);
+            this.showAlert('오류', 'PDF 생성 중 오류가 발생했습니다: ' + e.message);
         } finally {
             btn.textContent = origText; btn.disabled = false;
         }
@@ -3016,7 +3394,20 @@ const App = {
 
     printPDF() {
         const gradeText = this.state.config.grade ? `${this.state.config.grade}학년 ` : '';
-        const { page1, page2 } = this._buildFullPrintHtml('pt');
+        const targetClass = this.ppoTargetClass || 'all';
+        const { page1, page2 } = this._buildFullPrintHtml('pt', targetClass);
+
+        let pdfPagesHtml = '';
+        if (this.attachedPdf && this.attachedPdf.pages) {
+            this.attachedPdf.pages.forEach((p, idx) => {
+                pdfPagesHtml += `
+                    <div class="pt-page-pdf">
+                        <img src="${p.dataUrl}" style="width:100%; height:auto; display:block;">
+                    </div>
+                    <div class="pt-page-break"></div>
+                `;
+            });
+        }
 
         const css = `
             @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
@@ -3025,6 +3416,7 @@ const App = {
             @page { size:A4 portrait; margin:14mm 12mm; }
             .pt-doc-title { text-align:center; font-size:1.15rem; font-weight:800; padding:9px 16px; margin-bottom:14px; border-bottom:2px solid #1e293b; letter-spacing:1.5px; color:#1e293b; }
             .pt-grid { display:grid; gap:10px; align-items:stretch; }
+            .pt-grid-1 { grid-template-columns:1fr; }
             .pt-grid-2 { grid-template-columns:repeat(2,1fr); }
             .pt-grid-3 { grid-template-columns:repeat(3,1fr); }
             .pt-grid-4 { grid-template-columns:repeat(4,1fr); }
@@ -3039,14 +3431,21 @@ const App = {
             .pt-sp-day-th { background:#f1f5f9; font-weight:700; font-size:9px; color:#475569; padding:2px 1px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .pt-sp-desc { font-family:inherit; font-weight:600; font-size:9.5px; opacity:0.9; border-left:1.5px solid currentColor; margin-left:8px; padding-left:8px; }
             .pt-page-break { page-break-before:always; }
+            .pt-page-pdf { width:100%; display:flex; justify-content:center; }
+            
+            .pt-single-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:12.5px; text-align:center; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; font-weight:600; border:2px solid #1e293b; margin-bottom:20px; }
+            .pt-single-table th, .pt-single-table td { border:1px solid #cbd5e1; padding:12px 6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+            .pt-single-table th.pt-day-th { background:#1e293b !important; color:#ffffff !important; font-size:12.5px; font-weight:800; padding:10px 4px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-single-table td.pt-pd-td { background:#f1f5f9; font-weight:800; color:#475569; font-size:11.5px; width:48px; }
         `;
 
         const win = window.open('', '_blank', 'width=900,height=700');
         if (!win) { window.print(); return; }
-        const p2Block = page2 ? `<div class="pt-page-break">${page2}</div>` : '';
+        const p2Block = page2 ? `<div class="pt-page-break"></div><div>${page2}</div>` : '';
+        const targetTitle = targetClass === 'all' ? '주간학습안내' : `${targetClass}반 주간학습안내`;
         win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-            <title>${gradeText}${this.state.currentWeek}주차 주간학습안내</title>
-            <style>${css}</style></head><body>${page1}${p2Block}</body></html>`);
+            <title>${gradeText}${this.state.currentWeek}주차 ${targetTitle}</title>
+            <style>${css}</style></head><body>${pdfPagesHtml}<div>${page1}</div>${p2Block}</body></html>`);
         win.document.close();
         win.focus();
         setTimeout(() => { win.print(); win.close(); }, 400);
