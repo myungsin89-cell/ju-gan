@@ -435,16 +435,20 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 .ppo-remove-pdf-btn:hover { color: #ef4444; }
 .ppo-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ppo-select-wrap {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: #1e293b; padding: 3px 8px; border-radius: 6px;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #334155; padding: 4px 10px; border-radius: 6px;
     border: 1px solid #475569;
 }
-.ppo-class-select {
-    background: transparent; color: #f8fafc; border: none;
-    font-size: 0.85rem; font-weight: 700; outline: none; cursor: pointer;
-    padding: 2px 4px;
+.ppo-select-label {
+    color: #f8fafc !important; font-size: 0.85rem; font-weight: 700;
+    margin: 0; user-select: none;
 }
-.ppo-class-select option { background: #0f172a; color: #f8fafc; }
+.ppo-class-select {
+    background: #1e293b; color: #ffffff !important; border: 1px solid #64748b;
+    font-size: 0.85rem; font-weight: 700; outline: none; cursor: pointer;
+    padding: 3px 8px; border-radius: 4px;
+}
+.ppo-class-select option { background: #1e293b; color: #ffffff !important; }
 
 .ppo-close-btn {
     width: 32px; height: 32px; border-radius: 50%; border: none;
@@ -478,40 +482,40 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     background: #0284c7; color: #fff; border-color: #38bdf8;
 }
 
-/* 단독 반 시간표 테이블 스타일 (한 페이지에 전담과 함께 배치되도록 최적화) */
+/* 단독 반 시간표 테이블 스타일 (깔끔한 슬레이트 그레이 테마) */
 .ppo-single-table {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    font-size: 11.5px;
+    font-size: 12px;
     text-align: center;
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     font-weight: 600;
-    border: 1.5px solid #1e293b;
+    border: 1.5px solid #94a3b8;
     margin-bottom: 14px;
 }
 .ppo-single-table th, .ppo-single-table td {
     border: 1px solid #cbd5e1;
-    padding: 7px 4px;
+    padding: 8px 4px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 .ppo-single-table th.ppo-day-th {
-    background: #1e293b !important;
+    background: #475569 !important;
     color: #ffffff !important;
-    font-size: 11.5px;
-    font-weight: 800;
-    padding: 7px 4px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 4px;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
 .ppo-single-table td.ppo-pd-td {
-    background: #f1f5f9;
-    font-weight: 800;
-    color: #475569;
-    font-size: 10.5px;
-    width: 42px;
+    background: #f8fafc;
+    font-weight: 700;
+    color: #64748b;
+    font-size: 11px;
+    width: 44px;
 }
 .ppo-cell-highlight {
     font-weight: 800;
@@ -550,10 +554,10 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 
 /* 문서 제목 */
 .ppo-doc-title {
-    text-align: center; font-size: 1.15rem; font-weight: 800;
-    padding: 9px 16px; margin-bottom: 14px;
-    border-bottom: 2px solid #1e293b; letter-spacing: 1.5px;
-    color: #1e293b;
+    text-align: center; font-size: 1.25rem; font-weight: 800;
+    padding: 10px 16px; margin-bottom: 16px;
+    border-bottom: 2px solid #cbd5e1; letter-spacing: 1px;
+    color: #334155;
 }
 
 /* 반별 시간표 그리드 — stretch로 모든 표 높이 동일 */
@@ -569,28 +573,28 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     font-size: 10.5px; text-align: center;
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     font-weight: 500; letter-spacing: -0.2px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
 }
 .ppo-table col.ppo-col-pd { width: 36px; }
 .ppo-table th, .ppo-table td {
-    border: 1px solid #e2e8f0; padding: 6px 1px;
+    border: 1px solid #cbd5e1; padding: 6px 1px;
     overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
     font-size: 11px; letter-spacing: -0.8px;
 }
 
 /* 반별 시간표 헤더 — 좌상단 셀(반 이름) */
 .ppo-class-th {
-    background: #1e293b; color: #fff; font-size: 12px;
-    font-weight: 900; padding: 8px 4px; letter-spacing: 0.5px;
+    background: #475569 !important; color: #ffffff !important; font-size: 12px;
+    font-weight: 800; padding: 8px 4px; letter-spacing: 0.5px;
     white-space: nowrap;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
 .ppo-day-th {
-    background: #f1f5f9; font-weight: 700; font-size: 10px;
-    color: #475569;
+    background: #f8fafc !important; font-weight: 700; font-size: 10.5px;
+    color: #334155;
 }
 .ppo-pd-td {
-    background: #f8fafc; font-weight: 700; color: #94a3b8;
+    background: #f8fafc; font-weight: 700; color: #64748b;
     font-size: 9.5px;
 }
 .ppo-disabled-td { background: #f1f5f9; }
