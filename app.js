@@ -255,6 +255,7 @@ const App = {
         if (!wData.specialistTargets) wData.specialistTargets = {};
         if (!wData.specialistCells) wData.specialistCells = {};
         if (!wData.specialists) wData.specialists = [];
+        if (!wData.attachedPdf) wData.attachedPdf = null;
     },
 
     isClassInSpecialist(sp, cNum, week) {
@@ -3084,23 +3085,28 @@ const App = {
         return { page1, page2 };
     },
 
-    async handlePdfUpload(e) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-            this.showAlert('오류', 'PDF 파일만 업로드할 수 있습니다.');
-            return;
+    async _getOrParseAttachedPdf(week) {
+        const w = week || this.state.currentWeek;
+        const attached = this.state.history[w]?.attachedPdf;
+        if (!attached || !attached.base64) return null;
+
+        if (!this._cachedPdfPages) this._cachedPdfPages = {};
+        if (this._cachedPdfPages[w] && this._cachedPdfPages[w].base64 === attached.base64) {
+            return this._cachedPdfPages[w];
         }
-        const btn = document.getElementById('btn-ppo-upload-pdf');
-        const origText = btn ? btn.textContent : '';
-        if (btn) { btn.textContent = '불러오는 중...'; btn.disabled = true; }
+
+        if (!window.pdfjsLib) return null;
 
         try {
-            if (!window.pdfjsLib) {
-                throw new Error('PDF.js 라이브러리가 로드되지 않았습니다.');
+            const base64Data = attached.base64.includes(',') ? attached.base64.split(',')[1] : attached.base64;
+            const binaryStr = atob(base64Data);
+            const len = binaryStr.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
             }
-            const arrayBuffer = await file.arrayBuffer();
-            const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+
+            const loadingTask = window.pdfjsLib.getDocument({ data: bytes.buffer });
             const pdfDoc = await loadingTask.promise;
             const numPages = pdfDoc.numPages;
             const renderedPages = [];
@@ -3118,7 +3124,7 @@ const App = {
                 canvas.height = scaledViewport.height;
 
                 await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
-                
+
                 renderedPages.push({
                     pageNum: i,
                     canvas: canvas,
@@ -3127,15 +3133,69 @@ const App = {
                 });
             }
 
-            this.attachedPdf = {
-                fileName: file.name,
+            this._cachedPdfPages[w] = {
+                fileName: attached.fileName,
+                base64: attached.base64,
                 pages: renderedPages
             };
+            return this._cachedPdfPages[w];
+        } catch (e) {
+            console.error('PDF 파싱 오류:', e);
+            return null;
+        }
+    },
 
-            this.showToast(`${file.name} (${numPages}쪽) 첨부 완료`);
-            this.showPrintPreview();
+    async handlePdfUpload(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+            this.showAlert('오류', 'PDF 파일만 업로드할 수 있습니다.');
+            return;
+        }
+        if (file.size > 1024 * 1024) {
+            this.showAlert('용량 초과', 'PDF 파일 용량은 1MB 이하여야 서버 저장이 원활합니다.');
+            return;
+        }
+
+        const btn = document.getElementById('btn-ppo-upload-pdf');
+        const origText = btn ? btn.textContent : '';
+        if (btn) { btn.textContent = '불러오는 중...'; btn.disabled = true; }
+
+        try {
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            const currentW = this.state.currentWeek;
+            this.state.history[currentW].attachedPdf = {
+                fileName: file.name,
+                base64: base64
+            };
+
+            if (this._cachedPdfPages) delete this._cachedPdfPages[currentW];
+            this.saveData();
+
+            if (this.state.roomCode && this.state.isAdmin) {
+                try {
+                    await FirebaseDB.saveWeekPdf(this.state.roomCode, this.state.currentSemester, currentW, {
+                        fileName: file.name,
+                        base64: base64
+                    });
+                    this.showToast(`${file.name} 서버 저장 및 첨부 완료`);
+                } catch(srvErr) {
+                    console.warn('서버 저장 실패 (로컬 유지):', srvErr);
+                    this.showToast(`${file.name} 첨부 완료 (로컬 저장됨)`);
+                }
+            } else {
+                this.showToast(`${file.name} 첨부 완료`);
+            }
+
+            await this.showPrintPreview();
         } catch(err) {
-            console.error('PDF 읽기 오류:', err);
+            console.error('PDF 처리 오류:', err);
             this.showAlert('오류', 'PDF 파일을 읽는 중 오류가 발생했습니다: ' + err.message);
         } finally {
             if (btn) { btn.textContent = origText; btn.disabled = false; }
@@ -3143,13 +3203,27 @@ const App = {
         }
     },
 
-    removeAttachedPdf() {
-        this.attachedPdf = null;
-        this.showToast('첨부된 PDF가 제거되었습니다.');
-        this.showPrintPreview();
+    async removeAttachedPdf() {
+        const currentW = this.state.currentWeek;
+        this.state.history[currentW].attachedPdf = null;
+        if (this._cachedPdfPages) delete this._cachedPdfPages[currentW];
+        this.saveData();
+
+        if (this.state.roomCode && this.state.isAdmin) {
+            try {
+                await FirebaseDB.saveWeekPdf(this.state.roomCode, this.state.currentSemester, currentW, null);
+                this.showToast('서버에서 첨부 PDF가 제거되었습니다.');
+            } catch(e) {
+                this.showToast('첨부된 PDF가 제거되었습니다.');
+            }
+        } else {
+            this.showToast('첨부된 PDF가 제거되었습니다.');
+        }
+
+        await this.showPrintPreview();
     },
 
-    showPrintPreview() {
+    async showPrintPreview() {
         const overlay = document.getElementById('print-preview-overlay');
         const ppoBody = document.querySelector('.ppo-body');
         if (!overlay || !ppoBody) return;
@@ -3179,13 +3253,24 @@ const App = {
             }
         }
 
-        // 첨부된 PDF 정보 배지 갱신
+        // 첨부된 PDF 로드 및 정보 배지 갱신
+        const attachedPdfObj = await this._getOrParseAttachedPdf(this.state.currentWeek);
         const pdfInfo = document.getElementById('ppo-attached-pdf-info');
         const pdfFilename = document.getElementById('ppo-pdf-filename');
+        const btnRemovePdf = document.getElementById('btn-ppo-remove-pdf');
+        const btnUploadPdf = document.getElementById('btn-ppo-upload-pdf');
+
+        if (btnUploadPdf) {
+            btnUploadPdf.style.display = this.state.isAdmin ? 'inline-block' : 'none';
+        }
+
         if (pdfInfo && pdfFilename) {
-            if (this.attachedPdf && this.attachedPdf.pages && this.attachedPdf.pages.length > 0) {
-                pdfFilename.textContent = `${this.attachedPdf.fileName} (${this.attachedPdf.pages.length}쪽)`;
+            if (attachedPdfObj && attachedPdfObj.pages && attachedPdfObj.pages.length > 0) {
+                pdfFilename.textContent = `${attachedPdfObj.fileName} (${attachedPdfObj.pages.length}쪽)`;
                 pdfInfo.classList.remove('hide');
+                if (btnRemovePdf) {
+                    btnRemovePdf.style.display = this.state.isAdmin ? 'inline-block' : 'none';
+                }
             } else {
                 pdfInfo.classList.add('hide');
             }
@@ -3194,8 +3279,8 @@ const App = {
         let globalPageNum = 1;
 
         // 1. 업로드된 PDF 페이지들이 있으면 먼저 렌더링
-        if (this.attachedPdf && this.attachedPdf.pages) {
-            this.attachedPdf.pages.forEach((p, idx) => {
+        if (attachedPdfObj && attachedPdfObj.pages) {
+            attachedPdfObj.pages.forEach((p, idx) => {
                 const pageIndex = globalPageNum;
                 const card = document.createElement('div');
                 card.className = 'ppo-page-card';
@@ -3228,8 +3313,8 @@ const App = {
         const { page1, page2 } = this._buildFullPrintHtml('ppo', targetClass);
 
         const isSingleClass = targetClass !== 'all';
-        const classLabel = isSingleClass ? `${targetClass}반 시간표` : '반별 시간표';
-        const spLabel = isSingleClass ? `${targetClass}반 배정 전담 시간표` : '전담 시간표';
+        const classLabel = isSingleClass ? `${targetClass}반 시간표 및 배정 전담` : '반별 시간표';
+        const spLabel = '전담 시간표';
 
         const mkHtmlCard = (html, label) => {
             const pageIndex = globalPageNum;
@@ -3270,8 +3355,9 @@ const App = {
             let dataUrl;
             const pageType = card.dataset.pageType;
             if (pageType === 'pdf') {
+                const attachedPdfObj = await this._getOrParseAttachedPdf(this.state.currentWeek);
                 const pdfIdx = parseInt(card.dataset.pdfPageIndex);
-                dataUrl = this.attachedPdf.pages[pdfIdx].dataUrl;
+                dataUrl = attachedPdfObj.pages[pdfIdx].dataUrl;
             } else {
                 const pageEl = card.querySelector('.ppo-page');
                 const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -3312,6 +3398,7 @@ const App = {
             const targetClass = this.ppoTargetClass || 'all';
             const targetText = targetClass === 'all' ? '전체' : `${targetClass}반`;
             const prefix = `${gradeText}${this.state.currentWeek}주차_${targetText}_주간학습`;
+            const attachedPdfObj = await this._getOrParseAttachedPdf(this.state.currentWeek);
 
             for (let i = 0; i < cards.length; i++) {
                 const card = cards[i];
@@ -3321,7 +3408,7 @@ const App = {
 
                 if (pageType === 'pdf') {
                     const pdfIdx = parseInt(card.dataset.pdfPageIndex);
-                    base64Data = this.attachedPdf.pages[pdfIdx].dataUrl.split(',')[1];
+                    base64Data = attachedPdfObj.pages[pdfIdx].dataUrl.split(',')[1];
                 } else {
                     const pageEl = card.querySelector('.ppo-page');
                     const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -3360,6 +3447,7 @@ const App = {
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const cards = document.querySelectorAll('.ppo-page-card');
             const a4W = 210, a4H = 297;
+            const attachedPdfObj = await this._getOrParseAttachedPdf(this.state.currentWeek);
 
             for (let i = 0; i < cards.length; i++) {
                 const card = cards[i];
@@ -3368,7 +3456,7 @@ const App = {
 
                 if (pageType === 'pdf') {
                     const pdfIdx = parseInt(card.dataset.pdfPageIndex);
-                    imgData = this.attachedPdf.pages[pdfIdx].dataUrl;
+                    imgData = attachedPdfObj.pages[pdfIdx].dataUrl;
                 } else {
                     const pageEl = card.querySelector('.ppo-page');
                     const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -3392,14 +3480,15 @@ const App = {
         }
     },
 
-    printPDF() {
+    async printPDF() {
         const gradeText = this.state.config.grade ? `${this.state.config.grade}학년 ` : '';
         const targetClass = this.ppoTargetClass || 'all';
         const { page1, page2 } = this._buildFullPrintHtml('pt', targetClass);
 
         let pdfPagesHtml = '';
-        if (this.attachedPdf && this.attachedPdf.pages) {
-            this.attachedPdf.pages.forEach((p, idx) => {
+        const attachedPdfObj = await this._getOrParseAttachedPdf(this.state.currentWeek);
+        if (attachedPdfObj && attachedPdfObj.pages) {
+            attachedPdfObj.pages.forEach((p, idx) => {
                 pdfPagesHtml += `
                     <div class="pt-page-pdf">
                         <img src="${p.dataUrl}" style="width:100%; height:auto; display:block;">
@@ -3433,10 +3522,10 @@ const App = {
             .pt-page-break { page-break-before:always; }
             .pt-page-pdf { width:100%; display:flex; justify-content:center; }
             
-            .pt-single-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:12.5px; text-align:center; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; font-weight:600; border:2px solid #1e293b; margin-bottom:20px; }
-            .pt-single-table th, .pt-single-table td { border:1px solid #cbd5e1; padding:12px 6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-            .pt-single-table th.pt-day-th { background:#1e293b !important; color:#ffffff !important; font-size:12.5px; font-weight:800; padding:10px 4px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            .pt-single-table td.pt-pd-td { background:#f1f5f9; font-weight:800; color:#475569; font-size:11.5px; width:48px; }
+            .pt-single-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:11.5px; text-align:center; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; font-weight:600; border:1.5px solid #1e293b; margin-bottom:14px; }
+            .pt-single-table th, .pt-single-table td { border:1px solid #cbd5e1; padding:7px 4px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+            .pt-single-table th.pt-day-th { background:#1e293b !important; color:#ffffff !important; font-size:11.5px; font-weight:800; padding:7px 4px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .pt-single-table td.pt-pd-td { background:#f1f5f9; font-weight:800; color:#475569; font-size:10.5px; width:42px; }
         `;
 
         const win = window.open('', '_blank', 'width=900,height=700');

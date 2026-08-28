@@ -86,6 +86,7 @@ const FirebaseDB = {
                 weeklyMemo: wData.weeklyMemo || '',
                 specialistCells: wData.specialistCells || {},
                 specialists: wData.specialists || [],
+                attachedPdf: wData.attachedPdf || null,
                 classes: {},
                 bgColors: {}
             };
@@ -109,6 +110,7 @@ const FirebaseDB = {
                 weeklyMemo: wData.weeklyMemo || '',
                 specialistCells: wData.specialistCells || {},
                 specialists: wData.specialists || [],
+                attachedPdf: wData.attachedPdf || null,
                 classes: {},
                 bgColors: {}
             };
@@ -223,8 +225,9 @@ const FirebaseDB = {
                 specialistMemo: wData.specialistMemo || '',
                 weeklyMemo: wData.weeklyMemo || '',
                 specialistCells: wData.specialistCells || {},
-                specialists: wData.specialists || []
-            })));
+                specialists: wData.specialists || [],
+                attachedPdf: wData.attachedPdf || null
+            }), { merge: true }));
 
             const classes = wData.classes || {};
             for (const [classNum, classData] of Object.entries(classes)) {
@@ -237,6 +240,17 @@ const FirebaseDB = {
             }
         }
         await Promise.all(saves);
+    },
+
+    // ── 주차별 첨부 PDF 단독 저장 ──
+    async saveWeekPdf(roomCode, semester, week, attachedPdf) {
+        const rRef = this.roomRef(roomCode);
+        const curSem = semester || 1;
+        const collectionName = curSem === 2 ? 'sem2_weeks' : 'weeks';
+        const wRef = rRef.collection(collectionName).doc(String(week));
+        await wRef.set(this._clean({
+            attachedPdf: attachedPdf || null
+        }), { merge: true });
     },
 
     // ── 일반 선생님 저장: 자기 반 데이터만 ──
