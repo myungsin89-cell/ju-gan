@@ -3259,17 +3259,25 @@ const App = {
         const pdfFilename = document.getElementById('ppo-pdf-filename');
         const btnRemovePdf = document.getElementById('btn-ppo-remove-pdf');
         const btnUploadPdf = document.getElementById('btn-ppo-upload-pdf');
+        const btnZip = document.getElementById('btn-ppo-download-zip');
+        const btnCheck = document.getElementById('btn-ppo-check');
+        const btnPrint = document.getElementById('btn-ppo-print');
+        const btnDownload = document.getElementById('btn-ppo-download');
 
-        if (btnUploadPdf) {
-            btnUploadPdf.style.display = this.state.isAdmin ? 'inline-block' : 'none';
-        }
+        // 관리자 전용 버튼 표시 제어 (일반 교사는 PDF 다운로드만 표시)
+        const isAdmin = !!this.state.isAdmin;
+        if (btnUploadPdf) btnUploadPdf.style.display = isAdmin ? 'inline-block' : 'none';
+        if (btnZip) btnZip.style.display = isAdmin ? 'inline-block' : 'none';
+        if (btnCheck) btnCheck.style.display = isAdmin ? 'inline-block' : 'none';
+        if (btnPrint) btnPrint.style.display = isAdmin ? 'inline-block' : 'none';
+        if (btnDownload) btnDownload.textContent = isAdmin ? '통합 PDF 다운로드' : 'PDF 다운로드';
 
         if (pdfInfo && pdfFilename) {
             if (attachedPdfObj && attachedPdfObj.pages && attachedPdfObj.pages.length > 0) {
                 pdfFilename.textContent = `${attachedPdfObj.fileName} (${attachedPdfObj.pages.length}쪽)`;
                 pdfInfo.classList.remove('hide');
                 if (btnRemovePdf) {
-                    btnRemovePdf.style.display = this.state.isAdmin ? 'inline-block' : 'none';
+                    btnRemovePdf.style.display = isAdmin ? 'inline-block' : 'none';
                 }
             } else {
                 pdfInfo.classList.add('hide');
@@ -3728,7 +3736,12 @@ const App = {
                 return;
             }
         }
-        this.showPrintPreview();
+        if (!this.state.isAdmin && this.state.userProfile?.classNum) {
+            this.ppoTargetClass = String(this.state.userProfile.classNum);
+        } else if (this.state.isAdmin && !this.ppoTargetClass) {
+            this.ppoTargetClass = 'all';
+        }
+        await this.showPrintPreview();
     },
 };
 
