@@ -602,9 +602,21 @@ const App = {
         document.getElementById('btn-print-guide').addEventListener('click', () => this.printWeeklyGuide());
         document.getElementById('btn-ppo-close').addEventListener('click', () => document.getElementById('print-preview-overlay').classList.add('hide'));
         document.getElementById('btn-ppo-check').addEventListener('click', () => this.runFinalCheck());
-        document.getElementById('btn-ppo-print').addEventListener('click', () => this.printPDF());
-        document.getElementById('btn-ppo-download').addEventListener('click', () => this.downloadPDF());
-        document.getElementById('btn-ppo-download-zip')?.addEventListener('click', () => this.downloadAllImagesZip());
+
+        // 통합 다운로드 드롭다운 메뉴 토글
+        const btnDownloadMenu = document.getElementById('btn-ppo-download-menu');
+        const ppoDownloadDropdown = document.getElementById('ppo-download-dropdown');
+        if (btnDownloadMenu && ppoDownloadDropdown) {
+            btnDownloadMenu.addEventListener('click', (e) => {
+                e.stopPropagation();
+                ppoDownloadDropdown.classList.toggle('hide');
+            });
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.ppo-dropdown-wrap')) {
+                    ppoDownloadDropdown.classList.add('hide');
+                }
+            });
+        }
         
         const btnUploadPdf = document.getElementById('btn-ppo-upload-pdf');
         const inputUploadPdf = document.getElementById('input-ppo-pdf-upload');
@@ -3259,18 +3271,14 @@ const App = {
         const pdfFilename = document.getElementById('ppo-pdf-filename');
         const btnRemovePdf = document.getElementById('btn-ppo-remove-pdf');
         const btnUploadPdf = document.getElementById('btn-ppo-upload-pdf');
-        const btnZip = document.getElementById('btn-ppo-download-zip');
         const btnCheck = document.getElementById('btn-ppo-check');
-        const btnPrint = document.getElementById('btn-ppo-print');
-        const btnDownload = document.getElementById('btn-ppo-download');
+        const ppoDownloadDropdown = document.getElementById('ppo-download-dropdown');
+        if (ppoDownloadDropdown) ppoDownloadDropdown.classList.add('hide');
 
-        // 관리자 전용 버튼 표시 제어 (일반 교사는 PDF 다운로드만 표시)
+        // 관리자 전용 버튼 표시 제어 (일반 교사는 다운로드 메뉴만 표시)
         const isAdmin = !!this.state.isAdmin;
         if (btnUploadPdf) btnUploadPdf.style.display = isAdmin ? 'inline-block' : 'none';
-        if (btnZip) btnZip.style.display = isAdmin ? 'inline-block' : 'none';
         if (btnCheck) btnCheck.style.display = isAdmin ? 'inline-block' : 'none';
-        if (btnPrint) btnPrint.style.display = isAdmin ? 'inline-block' : 'none';
-        if (btnDownload) btnDownload.textContent = isAdmin ? '통합 PDF 다운로드' : 'PDF 다운로드';
 
         if (pdfInfo && pdfFilename) {
             if (attachedPdfObj && attachedPdfObj.pages && attachedPdfObj.pages.length > 0) {
@@ -3393,9 +3401,11 @@ const App = {
     async downloadAllImagesZip() {
         const cards = document.querySelectorAll('.ppo-page-card');
         if (cards.length === 0) return;
-        const btn = document.getElementById('btn-ppo-download-zip');
-        const origText = btn ? btn.textContent : '';
-        if (btn) { btn.textContent = 'ZIP 압축 중...'; btn.disabled = true; }
+        const btnMenu = document.getElementById('btn-ppo-download-menu');
+        const origText = btnMenu ? btnMenu.textContent : '';
+        if (btnMenu) { btnMenu.textContent = 'ZIP 압축 중...'; btnMenu.disabled = true; }
+        const dropdown = document.getElementById('ppo-download-dropdown');
+        if (dropdown) dropdown.classList.add('hide');
 
         try {
             if (!window.JSZip) {
@@ -3442,14 +3452,17 @@ const App = {
             console.error('ZIP 생성 실패:', e);
             this.showAlert('오류', 'ZIP 압축 생성 중 오류가 발생했습니다: ' + e.message);
         } finally {
-            if (btn) { btn.textContent = origText; btn.disabled = false; }
+            if (btnMenu) { btnMenu.textContent = origText; btnMenu.disabled = false; }
         }
     },
 
     async downloadPDF() {
-        const btn = document.getElementById('btn-ppo-download');
-        const origText = btn.textContent;
-        btn.textContent = 'PDF 생성 중...'; btn.disabled = true;
+        const btnMenu = document.getElementById('btn-ppo-download-menu');
+        const origText = btnMenu ? btnMenu.textContent : '';
+        if (btnMenu) { btnMenu.textContent = 'PDF 생성 중...'; btnMenu.disabled = true; }
+        const dropdown = document.getElementById('ppo-download-dropdown');
+        if (dropdown) dropdown.classList.add('hide');
+
         try {
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -3484,7 +3497,84 @@ const App = {
             console.error('PDF 다운로드 오류:', e);
             this.showAlert('오류', 'PDF 생성 중 오류가 발생했습니다: ' + e.message);
         } finally {
-            btn.textContent = origText; btn.disabled = false;
+            if (btnMenu) { btnMenu.textContent = origText; btnMenu.disabled = false; }
+        }
+    },
+
+    /* 통합 패키지: PDF와 개별 이미지(PNG)를 한 번에 압축 다운로드 */
+    async downloadAllPackageZip() {
+        const cards = document.querySelectorAll('.ppo-page-card');
+        if (cards.length === 0) return;
+        const btnMenu = document.getElementById('btn-ppo-download-menu');
+        const origText = btnMenu ? btnMenu.textContent : '';
+        if (btnMenu) { btnMenu.textContent = '패키지 생성 중...'; btnMenu.disabled = true; }
+        const dropdown = document.getElementById('ppo-download-dropdown');
+        if (dropdown) dropdown.classList.add('hide');
+
+        try {
+            if (!window.JSZip || !window.jspdf) {
+                throw new Error('JSZip 또는 jsPDF 라이브러리가 로드되지 않았습니다.');
+            }
+            const zip = new window.JSZip();
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const a4W = 210, a4H = 297;
+
+            const gradeText = this.state.config.grade ? `${this.state.config.grade}학년_` : '';
+            const targetClass = this.ppoTargetClass || 'all';
+            const targetText = targetClass === 'all' ? '통합' : `${targetClass}반`;
+            const prefix = `${gradeText}${this.state.currentWeek}주차_${targetText}_주간학습`;
+            const attachedPdfObj = await this._getOrParseAttachedPdf(this.state.currentWeek);
+
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
+                const pageIndex = card.dataset.pageIndex;
+                const pageType = card.dataset.pageType;
+                let base64Data;
+                let imgData;
+
+                if (pageType === 'pdf') {
+                    const pdfIdx = parseInt(card.dataset.pdfPageIndex);
+                    imgData = attachedPdfObj.pages[pdfIdx].dataUrl;
+                    base64Data = imgData.split(',')[1];
+                } else {
+                    const pageEl = card.querySelector('.ppo-page');
+                    const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                    imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const pngData = canvas.toDataURL('image/png');
+                    base64Data = pngData.split(',')[1];
+                }
+
+                // 1. PDF에 페이지 추가
+                if (i > 0) pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, 0, a4W, a4H);
+
+                // 2. ZIP에 개별 페이지 PNG 추가
+                const padNum = String(pageIndex).padStart(2, '0');
+                zip.file(`${padNum}_${prefix}_${pageIndex}페이지.png`, base64Data, { base64: true });
+            }
+
+            // 3. ZIP에 통합 PDF 파일 추가
+            const pdfArrayBuffer = pdf.output('arraybuffer');
+            zip.file(`00_${prefix}_통합안내.pdf`, pdfArrayBuffer);
+
+            // 4. ZIP 다운로드
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${prefix}_통합패키지(PDF+이미지).zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            this.showToast('통합 패키지 (PDF + 이미지) ZIP 다운로드 완료');
+        } catch(e) {
+            console.error('통합 패키지 ZIP 생성 실패:', e);
+            this.showAlert('오류', '통합 패키지 생성 중 오류가 발생했습니다: ' + e.message);
+        } finally {
+            if (btnMenu) { btnMenu.textContent = origText; btnMenu.disabled = false; }
         }
     },
 

@@ -458,6 +458,58 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 .ppo-close-btn:hover { background: #fee2e2; color: #ef4444; }
 
+/* 통합 다운로드 드롭다운 메뉴 스타일 */
+.ppo-dropdown-wrap {
+    position: relative;
+    display: inline-block;
+}
+.ppo-dropdown-content {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    min-width: 230px;
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.ppo-dropdown-content.hide {
+    display: none !important;
+}
+.ppo-dropdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+}
+.ppo-dropdown-item:last-child {
+    border-bottom: none;
+}
+.ppo-dropdown-item:hover {
+    background: #f0f9ff;
+}
+.ppo-dropdown-item .ppo-dd-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+.ppo-dropdown-item .ppo-dd-sub {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
 .ppo-body {
     flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
     padding: 32px 24px; background: #e2e8f0; gap: 28px;

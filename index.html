@@ -545,11 +545,27 @@
                     </select>
                 </div>
                 <input type="file" id="input-ppo-pdf-upload" accept="application/pdf" style="display:none;">
-                <button id="btn-ppo-upload-pdf" class="btn-primary-small" style="background:#8b5cf6;">원본 PDF 첨부</button>
-                <button id="btn-ppo-download-zip" class="btn-primary-small" style="background:#0284c7;">전체 이미지(ZIP)</button>
+                <button id="btn-ppo-upload-pdf" class="btn-primary-small" style="background:#8b5cf6;">PDF 첨부</button>
                 <button id="btn-ppo-check" class="btn-primary-small" style="background:#059669;">최종 점검</button>
-                <button id="btn-ppo-print" class="btn-primary-small" style="background:#475569;">인쇄</button>
-                <button id="btn-ppo-download" class="btn-primary-small" style="background:#3b82f6;">통합 PDF 다운로드</button>
+
+                <!-- 통합 다운로드 드롭다운 -->
+                <div class="ppo-dropdown-wrap">
+                    <button id="btn-ppo-download-menu" class="btn-primary-small" style="background:#3b82f6;">다운로드 ▾</button>
+                    <div id="ppo-download-dropdown" class="ppo-dropdown-content hide">
+                        <button type="button" class="ppo-dropdown-item" onclick="App.downloadPDF()">
+                            <span class="ppo-dd-title">통합 PDF 다운로드</span>
+                            <span class="ppo-dd-sub">(.pdf 단일 파일)</span>
+                        </button>
+                        <button type="button" class="ppo-dropdown-item" onclick="App.downloadAllImagesZip()">
+                            <span class="ppo-dd-title">전체 이미지 다운로드</span>
+                            <span class="ppo-dd-sub">(.zip 각 페이지 PNG)</span>
+                        </button>
+                        <button type="button" class="ppo-dropdown-item" onclick="App.downloadAllPackageZip()">
+                            <span class="ppo-dd-title">통합 패키지 (PDF + 이미지)</span>
+                            <span class="ppo-dd-sub">(.zip PDF와 이미지 일괄 압축)</span>
+                        </button>
+                    </div>
+                </div>
                 <button id="btn-ppo-close" class="ppo-close-btn" title="닫기">✕</button>
             </div>
         </div>
