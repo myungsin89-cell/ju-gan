@@ -211,7 +211,34 @@ const App = {
 
     saveData() {
         this.saveSemesterStatePointers();
-        localStorage.setItem('school-planner-v4', JSON.stringify(this.state));
+        try {
+            // base64 대용량 데이터(첨부 PDF 등)는 Firestore에 저장되므로,
+            // 브라우저 localStorage(5MB 한도)에는 제외하여 QuotaExceededError 방지
+            const serialized = JSON.stringify(this.state, (key, value) => {
+                if (key === 'base64' && typeof value === 'string' && value.length > 500) {
+                    return undefined;
+                }
+                return value;
+            });
+            localStorage.setItem('school-planner-v4', serialized);
+        } catch (e) {
+            console.warn('로컬 스토리지 저장 한도 초과(안전 처리됨):', e);
+            try {
+                // 용량 초과 발생 시 핵심 세션 정보만 안전하게 보존
+                const minimal = {
+                    userProfile: this.state.userProfile,
+                    roomCode: this.state.roomCode,
+                    isAdmin: this.state.isAdmin,
+                    currentSemester: this.state.currentSemester,
+                    currentWeek: this.state.currentWeek,
+                    maxWeek: this.state.maxWeek,
+                    config: this.state.config
+                };
+                localStorage.setItem('school-planner-v4', JSON.stringify(minimal));
+            } catch (innerErr) {
+                console.warn('최소 설정 로컬 저장 실패:', innerErr);
+            }
+        }
     },
 
     // 주차별 전담 배열 반환 (week 생략 시 currentWeek)
