@@ -173,6 +173,13 @@ const App = {
         };
     },
 
+    _formatLocalDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
     getMondayOfWeek(dateStr) {
         if (!dateStr) return null;
         const d = new Date(dateStr + 'T00:00:00');
@@ -180,7 +187,7 @@ const App = {
         const day = d.getDay(); // 0(일) ~ 6(토)
         const diff = day === 0 ? -6 : 1 - day;
         d.setDate(d.getDate() + diff);
-        return d.toISOString().slice(0, 10);
+        return this._formatLocalDate(d);
     },
 
     switchSemester(semNum, startDate) {
@@ -2769,6 +2776,11 @@ const App = {
         const anchor = this.state.config?.weekAnchor;
         if (!anchor || !anchor.startDate) return null;
         const base = new Date(anchor.startDate + 'T00:00:00');
+        if (isNaN(base.getTime())) return null;
+        // 기존 UTC(toISOString) 버그로 일요일(0)이 저장된 경우 원래 월요일(+1일)로 자동 보정
+        if (base.getDay() === 0) {
+            base.setDate(base.getDate() + 1);
+        }
         const diff = (week - anchor.week) * 7;
         const mon = new Date(base);
         mon.setDate(base.getDate() + diff);
@@ -2810,7 +2822,7 @@ const App = {
         // 기존 anchor에서 이 주차 월요일 계산
         const mon = this.getWeekMonday(this.state.currentWeek);
         if (mon) {
-            input.value = mon.toISOString().slice(0, 10);
+            input.value = this._formatLocalDate(mon);
         } else {
             input.value = '';
         }
